@@ -1,4 +1,5 @@
 import "server-only";
+import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { PGlite } from "@electric-sql/pglite";
 import type { PgDatabase, PgQueryResultHKT } from "drizzle-orm/pg-core";
@@ -15,6 +16,7 @@ export const MIGRATIONS_FOLDER = path.join(process.cwd(), "drizzle");
 
 /** Creates an embedded Postgres (PGlite) database and applies migrations. */
 export async function createPgliteDb(dataDir?: string): Promise<Db> {
+  if (dataDir) await mkdir(dataDir, { recursive: true });
   const client = new PGlite(dataDir);
   const db = drizzlePglite({ client, schema });
   await migratePglite(db, { migrationsFolder: MIGRATIONS_FOLDER });

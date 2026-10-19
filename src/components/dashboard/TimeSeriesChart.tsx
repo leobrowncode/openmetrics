@@ -70,10 +70,10 @@ export function TimeSeriesChart({
             const axis = dualAxis && i === 1 ? "right" : "left";
             const color = COLORS[i % COLORS.length];
             const style = i === 0 ? chartStyle : "line";
-            if (style === "bar") return <Bar key={key} yAxisId={axis} dataKey={key} fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />;
+            if (style === "bar") return <Bar key={key} isAnimationActive={false} yAxisId={axis} dataKey={key} fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />;
             if (style === "area")
-              return <Area key={key} yAxisId={axis} dataKey={key} stroke={color} fill={color} fillOpacity={0.12} strokeWidth={2} type="monotone" />;
-            return <Line key={key} yAxisId={axis} dataKey={key} stroke={color} strokeWidth={2} dot={false} type="monotone" connectNulls={false} />;
+              return <Area key={key} isAnimationActive={false} yAxisId={axis} dataKey={key} stroke={color} fill={color} fillOpacity={0.12} strokeWidth={2} type="linear" />;
+            return <Line key={key} isAnimationActive={false} yAxisId={axis} dataKey={key} stroke={color} strokeWidth={2} dot={false} type="linear" connectNulls={false} />;
           })}
         </ComposedChart>
       </ResponsiveContainer>
