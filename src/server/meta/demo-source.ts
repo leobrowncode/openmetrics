@@ -1,4 +1,4 @@
-import { eachDay, type DateRange } from "@/lib/periods";
+import { eachDay } from "@/lib/periods";
 import type { InsightsSource, MetaAdAccountInfo, RawInsightRow } from "./source";
 
 /**
@@ -141,7 +141,13 @@ export function createDemoSource(): InsightsSource {
     if (!account) throw new Error(`Unknown demo account ${id}`);
     return account;
   };
-  const info = ({ campaigns: _campaigns, ...rest }: DemoAccount): MetaAdAccountInfo => rest;
+  const info = (a: DemoAccount): MetaAdAccountInfo => ({
+    metaAccountId: a.metaAccountId,
+    name: a.name,
+    currency: a.currency,
+    timezoneName: a.timezoneName,
+    accountStatus: a.accountStatus,
+  });
   return {
     get apiCalls() {
       return calls;

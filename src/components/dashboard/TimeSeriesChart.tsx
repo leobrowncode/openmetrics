@@ -1,0 +1,82 @@
+"use client";
+
+import {
+  Area,
+  Bar,
+  CartesianGrid,
+  ComposedChart,
+  Legend,
+  Line,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import type { DateRange } from "@/lib/periods";
+import { bucketSeries, formatBucket, pickGranularity } from "./aggregate";
+
+const COLORS = ["#2753d8", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
+
+export function TimeSeriesChart({
+  metrics,
+  series,
+  range,
+  currency,
+  chartStyle = "line",
+}: {
+  metrics: MetricKey[];
+  series: Array<{ date: string } & Sums>;
+  range: DateRange;
+  currency: string;
+  chartStyle?: "line" | "bar" | "area";
+}) {
+  const granularity = pickGranularity(range);
+  const rows = bucketSeries(series, range, granularity).map((b) => {
+    const point: Record<string, number | string | null> = { label: formatBucket(b.bucket, granularity) };
+    for (const key of metrics) point[key] = computeMetric(key, b);
+    return point;
+  });
+
+  // A second axis is used when two metrics do not share a unit/scale (e.g. CTR and CPC).
+  const units = metrics.map((k) => getMetric(k).unit);
+  const dualAxis = metrics.length === 2 && (units[0] !== units[1] || metrics.includes("impressions"));
+  const compact = (key: MetricKey) => (v: number) =>
+    getMetric(key).unit === "currency"
+      ? new Intl.NumberFormat("fr-FR", { style: "currency", currency, notation: "compact", maximumFractionDigits: 1 }).format(v)
+      : getMetric(key).unit === "percent"
+        ? `${v.toFixed(1)} %`
+        : new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(v);
+
+  return (
+    <div className="h-72 w-full">
+      <p className="mb-2 text-xs text-slate-400">
+        Granularité : {granularity === "day" ? "jour" : granularity === "week" ? "semaine" : "mois"}
+      </p>
+      <ResponsiveContainer width="100%" height="90%">
+        <ComposedChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
+          <CartesianGrid stroke="#eef0f4" vertical={false} />
+          <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} minTickGap={16} />
+          <YAxis yAxisId="left" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} width={64} tickFormatter={compact(metrics[0])} />
+          {dualAxis && (
+            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} width={64} tickFormatter={compact(metrics[1])} />
+          )}
+          <Tooltip
+            formatter={(value, name) => [formatMetric(name as MetricKey, typeof value === "number" ? value : null, currency), getMetric(name as MetricKey).label]}
+            contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0", fontSize: 12 }}
+          />
+          {metrics.length > 1 && <Legend formatter={(value) => getMetric(value as MetricKey).label} wrapperStyle={{ fontSize: 12 }} />}
+          {metrics.map((key, i) => {
+            const axis = dualAxis && i === 1 ? "right" : "left";
+            const color = COLORS[i % COLORS.length];
+            const style = i === 0 ? chartStyle : "line";
+            if (style === "bar") return <Bar key={key} yAxisId={axis} dataKey={key} fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />;
+            if (style === "area")
+              return <Area key={key} yAxisId={axis} dataKey={key} stroke={color} fill={color} fillOpacity={0.12} strokeWidth={2} type="monotone" />;
+            return <Line key={key} yAxisId={axis} dataKey={key} stroke={color} strokeWidth={2} dot={false} type="monotone" connectNulls={false} />;
+          })}
+        </ComposedChart>
+      </ResponsiveContainer>
+    </div>
+  );
+}

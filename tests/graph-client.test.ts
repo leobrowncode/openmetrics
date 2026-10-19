@@ -85,7 +85,7 @@ describe("Graph API client", () => {
       jsonResponse({ error: { code: 190, error_subcode: 463, message: `Session has expired for ${TOKEN}` } }, 400),
     ]);
     const client = createGraphClient({ accessToken: TOKEN, apiVersion: "v24.0", fetchImpl: fn, sleep: noSleep });
-    const error = await client.get("me").catch((e) => e);
+    const error = (await client.get("me").catch((e) => e)) as MetaApiError;
     expect(error).toBeInstanceOf(MetaApiError);
     expect(error.kind).toBe("auth");
     expect(error.message).not.toContain(TOKEN);
@@ -98,7 +98,7 @@ describe("Graph API client", () => {
       jsonResponse({ error: { code: 17, message: "User request limit reached" } }, 400, { "x-business-use-case-usage": usage }),
     ]);
     const client = createGraphClient({ accessToken: TOKEN, apiVersion: "v24.0", fetchImpl: fn, sleep: noSleep });
-    const error = await client.get("me").catch((e) => e);
+    const error = (await client.get("me").catch((e) => e)) as MetaApiError;
     expect(error.kind).toBe("rate_limit");
     expect(error.retryAfterMs).toBe(30 * 60_000);
   });
