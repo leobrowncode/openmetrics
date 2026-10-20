@@ -13,6 +13,8 @@ const nextConfig: NextConfig = {
   cacheComponents: false,
   poweredByHeader: false,
   serverExternalPackages: ["@electric-sql/pglite"],
+  // Migrations are read from disk at runtime (see src/server/db/client.ts).
+  outputFileTracingIncludes: { "/**": ["./drizzle/**/*"] },
   turbopack: {
     rules: {
       "*.css": {
