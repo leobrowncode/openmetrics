@@ -2,9 +2,10 @@ import "server-only";
 import { eq, sql } from "drizzle-orm";
 import { REFERENCE_TEMPLATE_CONFIG } from "@/lib/dashboard-config";
 import { createAdminUser } from "../auth/admin";
-import { env, isProduction } from "../env";
+import { addDays, todayInTimezone } from "@/lib/periods";
+import { env } from "../env";
 import { DEMO_ACCOUNTS } from "../meta/demo-source";
-import { syncAdAccount } from "../sync/sync-service";
+import { INITIAL_BACKFILL_DAYS, syncAdAccount } from "../sync/sync-service";
 import type { Db } from "./client";
 import { adAccounts, adminUsers, clients, dashboards, dashboardTemplates, metaConnections } from "./schema";
 
@@ -30,7 +31,10 @@ export async function ensureBootstrap(db: Db, options: { demo: boolean }): Promi
     const { ADMIN_EMAIL, ADMIN_PASSWORD } = env();
     if (ADMIN_EMAIL && ADMIN_PASSWORD) {
       await createAdminUser(db, ADMIN_EMAIL, ADMIN_PASSWORD);
-    } else if (options.demo && !isProduction()) {
+    }
+    // Demo credentials stay available on a DEMO_MODE instance, including production,
+    // so the synthetic dashboard can be opened without a client-supplied login.
+    if (options.demo) {
       await createAdminUser(db, DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD);
     }
   }
@@ -64,7 +68,16 @@ export async function seedDemo(db: Db): Promise<void> {
         conversionActionTypes: ["offsite_conversion.fb_pixel_purchase"],
       })
       .returning();
-    await syncAdAccount(db, adAccount.id, { trigger: "backfill" });
+    // A full 25-month import does not fit in one serverless invocation. Seed the
+    // window the default dashboard needs, then mark history complete so the
+    // daily cron does not spend its budget backfilling synthetic days.
+    const today = todayInTimezone(account.timezoneName);
+    const from = addDays(today, -120);
+    await syncAdAccount(db, adAccount.id, { trigger: "backfill", range: { from, to: today } });
+    await db
+      .update(adAccounts)
+      .set({ historyFrom: addDays(today, -INITIAL_BACKFILL_DAYS) })
+      .where(eq(adAccounts.id, adAccount.id));
     await db.insert(dashboards).values({
       clientId: client.id,
       name: `${client.name} — Reporting Meta Ads`,
