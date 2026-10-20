@@ -11,6 +11,7 @@ const ITEMS = [
   { href: "/admin/templates", label: "Modèles" },
   { href: "/admin/connections", label: "Connexions Meta" },
   { href: "/admin/syncs", label: "Synchronisations" },
+  { href: "/admin/team", label: "Équipe" },
 ];
 
 export function AdminNav() {

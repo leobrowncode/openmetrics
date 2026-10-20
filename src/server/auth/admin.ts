@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gt, lt } from "drizzle-orm";
+import { and, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { getDb, type Db } from "../db/client";
@@ -22,6 +22,51 @@ export async function createAdminUser(db: Db, email: string, password: string): 
     .insert(adminUsers)
     .values({ email: email.toLowerCase(), passwordHash: await hashPassword(password) })
     .onConflictDoNothing();
+}
+
+export const PASSWORD_MIN_LENGTH = 12;
+
+export function passwordProblem(password: string): string | null {
+  if (password.length < PASSWORD_MIN_LENGTH) return `Le mot de passe doit contenir au moins ${PASSWORD_MIN_LENGTH} caractères.`;
+  if (password.length > 200) return "Mot de passe trop long.";
+  return null;
+}
+
+/** Returns false when the email is already used. */
+export async function addAdminUser(db: Db, email: string, password: string): Promise<boolean> {
+  const rows = await db
+    .insert(adminUsers)
+    .values({ email: email.toLowerCase(), passwordHash: await hashPassword(password) })
+    .onConflictDoNothing()
+    .returning({ id: adminUsers.id });
+  return rows.length > 0;
+}
+
+/** Verifies the current password, stores the new one and ends every other session of this admin. */
+export async function changePassword(
+  db: Db,
+  userId: string,
+  current: string,
+  next: string,
+  keepSessionToken: string | null,
+): Promise<"ok" | "invalid" | "rate_limited"> {
+  const limit = await rateLimit(db, `password:${userId}`, 8, 15 * 60);
+  if (!limit.allowed) return "rate_limited";
+  const [user] = await db.select().from(adminUsers).where(eq(adminUsers.id, userId));
+  if (!user || !(await verifyPassword(current, user.passwordHash))) return "invalid";
+  await db.update(adminUsers).set({ passwordHash: await hashPassword(next) }).where(eq(adminUsers.id, userId));
+  const keepHash = keepSessionToken && isWellFormedToken(keepSessionToken) ? hashToken(keepSessionToken, "session") : "";
+  await db.delete(adminSessions).where(and(eq(adminSessions.userId, userId), ne(adminSessions.tokenHash, keepHash)));
+  return "ok";
+}
+
+/** Deleting cascades to the admin's sessions, so access stops immediately. */
+export async function removeAdminUser(db: Db, actorId: string, userId: string): Promise<"ok" | "self" | "last" | "not_found"> {
+  if (actorId === userId) return "self";
+  const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(adminUsers);
+  if (count <= 1) return "last";
+  const rows = await db.delete(adminUsers).where(eq(adminUsers.id, userId)).returning({ id: adminUsers.id });
+  return rows.length ? "ok" : "not_found";
 }
 
 export async function authenticate(
