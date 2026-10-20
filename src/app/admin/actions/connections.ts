@@ -3,58 +3,26 @@
 import { eq, sql } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { adAccounts, metaConnections } from "@/server/db/schema";
-import { env } from "@/server/env";
+import { inspectToken, pastedTokenExpiry, saveMetaConnection, scopeMessage } from "@/server/meta/connections";
 import { describeMetaError, MetaApiError } from "@/server/meta/errors";
-import { createMetaSource, fetchGrantedPermissions } from "@/server/meta/source";
-import { decryptSecret, encryptSecret } from "@/server/security/encryption";
+import { decryptSecret } from "@/server/security/encryption";
 import { adminContext, formString, type ActionState } from "./context";
 
-const WRITE_SCOPES = ["ads_management", "business_management"];
-
-async function inspectToken(token: string) {
-  const source = createMetaSource({
-    accessToken: token,
-    apiVersion: env().META_GRAPH_API_VERSION,
-    appSecret: env().META_APP_SECRET,
-    maxRetries: 1,
-  });
-  const scopes = await fetchGrantedPermissions(source.client);
-  const accounts = scopes.includes("ads_read") || scopes.includes("ads_management") ? await source.listAdAccounts() : [];
-  return { scopes, accounts };
-}
-
-function scopeMessage(scopes: string[], accountCount: number): string {
-  const extra = scopes.filter((s) => WRITE_SCOPES.includes(s));
-  const base = `Connexion vérifiée : ${accountCount} compte(s) publicitaire(s) accessible(s).`;
-  return extra.length
-    ? `${base} Attention : ce token dispose aussi de ${extra.join(", ")}. L'application n'effectue que des lectures, mais un token limité à ads_read est recommandé.`
-    : base;
-}
+const TOKEN_RE = /^[A-Za-z0-9_|-]{20,1000}$/;
+const NO_READ_PERMISSION = "Ce token n'a pas la permission ads_read : il ne peut pas lire les statistiques publicitaires.";
 
 export async function createConnectionAction(_prev: ActionState | null, formData: FormData): Promise<ActionState> {
   const { db, log } = await adminContext();
   const label = formString(formData, "label");
   const token = formString(formData, "token");
   if (label.length < 2 || label.length > 120) return { error: "Nom de connexion invalide." };
-  if (!/^[A-Za-z0-9_|-]{20,1000}$/.test(token)) return { error: "Le token ne semble pas valide." };
+  if (!TOKEN_RE.test(token)) return { error: "Le token ne semble pas valide." };
 
   try {
-    const { scopes, accounts } = await inspectToken(token);
-    if (!scopes.includes("ads_read") && !scopes.includes("ads_management")) {
-      return { error: "Ce token n'a pas la permission ads_read : il ne peut pas lire les statistiques publicitaires." };
-    }
-    const [connection] = await db
-      .insert(metaConnections)
-      .values({
-        label,
-        kind: "meta",
-        encryptedToken: encryptSecret(token),
-        grantedScopes: scopes,
-        status: "active",
-        lastCheckedAt: new Date(),
-      })
-      .returning({ id: metaConnections.id });
-    await log("connection.create", "meta_connection", connection.id, { scopes });
+    const { scopes, accounts, canRead } = await inspectToken(token);
+    if (!canRead) return { error: NO_READ_PERMISSION };
+    const id = await saveMetaConnection(db, { label, token, scopes, expiresAt: await pastedTokenExpiry(token) });
+    await log("connection.create", "meta_connection", id, { scopes, method: "token" });
     revalidatePath("/admin/connections");
     return { ok: true, message: scopeMessage(scopes, accounts.length) };
   } catch (error) {
@@ -99,14 +67,12 @@ export async function replaceTokenAction(_prev: ActionState | null, formData: Fo
   const { db, log } = await adminContext();
   const id = formString(formData, "connectionId");
   const token = formString(formData, "token");
-  if (!/^[A-Za-z0-9_|-]{20,1000}$/.test(token)) return { error: "Le token ne semble pas valide." };
+  if (!TOKEN_RE.test(token)) return { error: "Le token ne semble pas valide." };
   try {
-    const { scopes, accounts } = await inspectToken(token);
-    await db
-      .update(metaConnections)
-      .set({ encryptedToken: encryptSecret(token), grantedScopes: scopes, status: "active", lastError: null, lastCheckedAt: new Date() })
-      .where(eq(metaConnections.id, id));
-    await log("connection.replace_token", "meta_connection", id, { scopes });
+    const { scopes, accounts, canRead } = await inspectToken(token);
+    if (!canRead) return { error: NO_READ_PERMISSION };
+    await saveMetaConnection(db, { connectionId: id, label: "", token, scopes, expiresAt: await pastedTokenExpiry(token) });
+    await log("connection.replace_token", "meta_connection", id, { scopes, method: "token" });
     revalidatePath("/admin/connections");
     return { ok: true, message: scopeMessage(scopes, accounts.length) };
   } catch (error) {

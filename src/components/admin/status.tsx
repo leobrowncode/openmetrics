@@ -27,6 +27,24 @@ export function ConnectionStatusBadge({ status }: { status: string }) {
   return <Badge tone={tone}>{label}</Badge>;
 }
 
+const EXPIRY_WARNING_DAYS = 14;
+
+export function daysUntil(date: Date, now = Date.now()): number {
+  return Math.floor((date.getTime() - now) / 86_400_000);
+}
+
+export function isTokenExpiringSoon(expiresAt: Date | null, now = Date.now()): boolean {
+  return expiresAt !== null && daysUntil(expiresAt, now) < EXPIRY_WARNING_DAYS;
+}
+
+export function TokenExpiryBadge({ expiresAt }: { expiresAt: Date | null }) {
+  if (!expiresAt) return null;
+  const days = daysUntil(expiresAt);
+  if (days < 0) return <Badge tone="red">Token expiré</Badge>;
+  if (days < EXPIRY_WARNING_DAYS) return <Badge tone="amber">Expire dans {days} j</Badge>;
+  return <Badge tone="slate">Expire le {expiresAt.toLocaleDateString("fr-FR")}</Badge>;
+}
+
 export function ShareStateBadge({ state }: { state: "active" | "expired" | "revoked" }) {
   if (state === "active") return <Badge tone="green">Actif</Badge>;
   if (state === "expired") return <Badge tone="amber">Expiré</Badge>;

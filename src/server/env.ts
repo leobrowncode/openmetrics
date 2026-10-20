@@ -18,8 +18,17 @@ const schema = z.object({
     .string()
     .regex(/^v\d+\.\d+$/)
     .default("v24.0"),
-  /** Enables appsecret_proof on every Graph API call when set. */
+  /** Enables appsecret_proof on every Graph API call when set; with META_APP_ID, enables "Se connecter avec Facebook". */
   META_APP_SECRET: z.string().optional(),
+  META_APP_ID: z
+    .string()
+    .regex(/^\d{5,25}$/)
+    .optional(),
+  /** Optional Facebook Login for Business configuration ID (system-user token, ads_read only). */
+  META_LOGIN_CONFIG_ID: z
+    .string()
+    .regex(/^\d{5,25}$/)
+    .optional(),
   /** Seeds synthetic demo clients, accounts and dashboards on an empty database. */
   DEMO_MODE: z.enum(["true", "false"]).default("false"),
   APP_URL: z.string().url().optional(),
