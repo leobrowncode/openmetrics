@@ -19,6 +19,8 @@ Source de vérité : `src/lib/metrics.ts`. Tous les ratios sont calculés **apr�
 | Coût par conversion | dépense ÷ conversions | Coût par résultat | — |
 | ROAS | valeur ÷ dépense | ROAS des achats | — |
 
+**Définitions validées par l'agence (2026-10-20)** : les widgets du modèle de référence utilisent les clics sur un lien (CTR lien, CPC lien, CVR) ; « Clics (tous) » et ses ratios restent disponibles.
+
 **Devise** : celle du compte publicitaire, jamais convertie. Un dashboard mélangeant plusieurs devises est refusé.
 **Fuseau** : les jours sont ceux du fuseau du compte (comme Ads Manager). Les périodes relatives excluent aujourd'hui (« 7 derniers jours » = J-7 à J-1).
 **Comparaison** : période précédente de même durée, immédiatement antérieure.

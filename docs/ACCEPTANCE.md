@@ -29,14 +29,17 @@ Dernière mise à jour : 19/10/2026.
 | Attribution du compte (comme Ads Manager) | 🧪 | aucune fenêtre forcée (`tests/graph-client.test.ts`) |
 | Double comptage des alias de conversion empêché | ✅ | tests + e2e |
 | **Comparaison avec Ads Manager sur un vrai compte** | ⏳ | Nécessite un token Meta réel (voir `docs/METRICS.md`) |
-| Définition des clics retenue (tous vs lien) | ❓ | Question posée à l'agence |
-| Définition de la conversion par client | ❓ | Paramétrable ; choix métier à confirmer |
+| Définition des clics retenue (tous vs lien) | ✅ | Validée le 2026-10-20 : clics sur un lien |
+| Définition de la conversion par client | ✅ | Validée le 2026-10-20 : configurée par l'admin, compte par compte |
 
 ## Fonctionnalités MVP
 
 | Critère | Statut |
 | --- | --- |
 | Connexion Meta par token (vérification des permissions) | 🧪 (testé avec réponses simulées, pas avec Meta) |
+| Connexion Meta « Se connecter avec Facebook » (OAuth, `ads_read`) | 🧪 (redirection, CSRF, annulation testés en e2e ; échange de code testé avec réponses simulées ; jamais exécuté contre Meta) |
+| Gestion des administrateurs (Équipe) | ✅ (tests + e2e) |
+| Installation autonome : migrations automatiques au démarrage | ✅ (vérifié avec un vrai Postgres 16 en mode production) |
 | Clients, comptes publicitaires, rattachement exclusif | ✅ |
 | Synchronisation planifiée, idempotente, tracée, verrouillée | ✅ (cron non testé sur Vercel) |
 | Dashboards multiples par client, à partir de modèles | ✅ |
@@ -48,7 +51,7 @@ Dernière mise à jour : 19/10/2026.
 | Supervision des synchronisations et des erreurs | ✅ |
 | Ventilations âge / genre | ⏳ |
 | Niveau ensemble de publicités (audiences) et publicités (créatives) | ⏳ |
-| Démo hébergée sur Vercel | ⏳ (autorisation et base Postgres à valider) |
+| Instance hébergée chez le client (Vercel ou autre) | ⏳ (guide prêt : `docs/DEPLOYMENT.md` ; déploiement par l'agence) |
 | Responsive | 🧪 (vérifié en 1280-1440 px ; mobile à vérifier) |
 
 ## Hors MVP

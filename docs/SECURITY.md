@@ -25,13 +25,19 @@ Limite connue : un destinataire peut transférer le lien d'origine à un tiers. 
 - Mot de passe scrypt (N=16384), sessions aléatoires de 12 h stockées sous forme d'empreinte, cookie `HttpOnly`.
 - Limitation : 8 tentatives / 15 min / e-mail, 20 / 15 min / IP.
 - Chaque page et chaque action serveur appelle `requireAdmin()` ; les actions serveur Next.js vérifient l'origine (CSRF).
-- Journal d'audit (`audit_log`) des actions sensibles (liens, connexions, suppression).
+- Journal d'audit (`audit_log`) des actions sensibles (liens, connexions, administrateurs, suppression).
+- Page Équipe : ajout d'administrateurs, retrait immédiat (sessions supprimées en cascade), impossible de se retirer soi-même ou de retirer le dernier admin. Changement de mot de passe : mot de passe actuel exigé, 8 essais / 15 min, autres sessions fermées.
+- `ADMIN_EMAIL`/`ADMIN_PASSWORD` ne créent un compte que si la base n'a aucun administrateur.
 
 ## Meta Ads
 
 - Client Graph API **GET uniquement** (testé) ; chemin validé par expression régulière ; token passé en en-tête `Authorization`, jamais dans l'URL ; `appsecret_proof` si `META_APP_SECRET` est défini.
 - Token chiffré AES-256-GCM (`TOKEN_ENCRYPTION_KEY`), jamais renvoyé au navigateur ; messages d'erreur expurgés.
 - Avertissement si le token dispose de `ads_management` : recommandation d'un utilisateur système en `ads_read` seul.
+- **« Se connecter avec Facebook »** (OAuth, `ads_read` seul) :
+  - `state` aléatoire 256 bits, lié à l'admin qui lance la demande, conservé 10 min dans un cookie `HttpOnly` signé HMAC limité à `/admin/connections/meta` ; le retour est refusé si l'état ne correspond pas (CSRF / injection d'un compte Meta tiers).
+  - Code échangé côté serveur en **POST** (le secret d'app n'apparaît dans aucune URL) ; `debug_token` vérifie que le token a été émis pour **cette** app ; token personnel converti en token longue durée, date d'expiration (y compris l'expiration d'accès aux données) stockée et signalée 14 jours avant.
+  - Seule la classification de l'erreur est journalisée ; la page de retour n'affiche que des messages prédéfinis.
 
 ## Isolation entre clients
 

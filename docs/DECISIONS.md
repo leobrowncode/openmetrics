@@ -2,6 +2,13 @@
 
 Chaque décision indique ce qui contraint les développements suivants.
 
+## Décisions métier validées par l'agence (2026-10-20)
+
+- **Clics = clics sur un lien** (`inline_link_clicks`) pour le CTR, le CPC et le taux de conversion. Les variantes « tous les clics » restent disponibles comme widgets, clairement libellées « (tous) ».
+- **Taux de conversion = conversions ÷ clics sur un lien.**
+- **Événement de conversion configuré par l'admin, compte par compte** (fiche client), avec refus des alias qui se recouvrent.
+- **Hébergement : une instance par agence, possédée par elle** (son Vercel ou autre, sa base, son app Meta). L'agence doit pouvoir tout administrer seule : connexion Meta en libre-service, gestion des administrateurs dans l'application, migrations automatiques. Voir `docs/DEPLOYMENT.md`.
+
 ## Stack
 
 | Choix | Raison | Licence / risque |
@@ -12,7 +19,8 @@ Chaque décision indique ce qui contraint les développements suivants.
 | Recharts | Graphiques React maintenus, utilisés par shadcn/ui | MIT |
 | Zod | Validation des entrées et de la configuration des dashboards | MIT |
 | Client Graph API maison (≈150 lignes) | Le SDK officiel `facebook-nodejs-business-sdk` expose toutes les écritures (campagnes, budgets) ; un client **GET-only** rend l'écriture impossible par construction | — |
-| Auth admin maison (scrypt + sessions en base) | Quelques administrateurs, pas besoin d'OAuth ; aucune dépendance supplémentaire | — |
+| Auth admin maison (scrypt + sessions en base) | Quelques administrateurs gérés depuis la page Équipe ; aucune dépendance ni service tiers | — |
+| OAuth Meta maison (≈120 lignes, sans SDK JS Facebook) | Redirection serveur classique : aucun script tiers dans l'admin, secret d'app jamais exposé, `ads_read` seul | — |
 
 Projets open source examinés : `EngAmi/meta-ads-growth-os` (MIT, tRPC/Express, orienté diagnostic, pas de partage client ni de multi-dashboards), `nawazxz/clientreport` (MIT, Python, rapports statiques), `SoCloseSociety/meta-ads-extractor` (MIT, extraction locale). Aucun ne couvre le partage sécurisé par lien ni l'isolation multi-clients ; trop jeunes (≤ 10 étoiles) pour servir de base. Ils ont servi de référence, pas de dépendance.
 
