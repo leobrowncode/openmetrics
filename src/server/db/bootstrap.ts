@@ -47,18 +47,26 @@ export async function seedDemo(db: Db): Promise<void> {
   const [{ count }] = await db.select({ count: sql<number>`count(*)::int` }).from(clients);
   if (count > 0) return;
 
+  // Fixed ids so every serverless instance seeds the same public URLs.
+  const demoIds = {
+    connection: "10000000-0000-4000-8000-000000000001",
+    clients: ["10000000-0000-4000-8000-000000000011", "10000000-0000-4000-8000-000000000012"],
+    accounts: ["10000000-0000-4000-8000-000000000021", "10000000-0000-4000-8000-000000000022"],
+    dashboards: ["10000000-0000-4000-8000-000000000031", "10000000-0000-4000-8000-000000000032"],
+  };
   const [connection] = await db
     .insert(metaConnections)
-    .values({ label: "Données synthétiques (démo)", kind: "demo", grantedScopes: ["ads_read"] })
+    .values({ id: demoIds.connection, label: "Données synthétiques (démo)", kind: "demo", grantedScopes: ["ads_read"] })
     .returning();
   const [template] = await db.select().from(dashboardTemplates).where(eq(dashboardTemplates.builtIn, true));
 
   const clientNames = ["Association Horizon", "Maison Lumen"];
   for (const [index, account] of DEMO_ACCOUNTS.entries()) {
-    const [client] = await db.insert(clients).values({ name: clientNames[index] }).returning();
+    const [client] = await db.insert(clients).values({ id: demoIds.clients[index], name: clientNames[index] }).returning();
     const [adAccount] = await db
       .insert(adAccounts)
       .values({
+        id: demoIds.accounts[index],
         clientId: client.id,
         connectionId: connection.id,
         metaAccountId: account.metaAccountId,
@@ -79,6 +87,7 @@ export async function seedDemo(db: Db): Promise<void> {
       .set({ historyFrom: addDays(today, -INITIAL_BACKFILL_DAYS) })
       .where(eq(adAccounts.id, adAccount.id));
     await db.insert(dashboards).values({
+      id: demoIds.dashboards[index],
       clientId: client.id,
       name: `${client.name} — Reporting Meta Ads`,
       config: template.config,
