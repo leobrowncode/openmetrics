@@ -8,6 +8,8 @@ Chaque décision indique ce qui contraint les développements suivants.
 - **Taux de conversion = conversions ÷ clics sur un lien.**
 - **Événement de conversion configuré par l'admin, compte par compte** (fiche client), avec refus des alias qui se recouvrent.
 - **Hébergement : une instance par agence, possédée par elle** (son Vercel ou autre, sa base, son app Meta). L'agence doit pouvoir tout administrer seule : connexion Meta en libre-service, gestion des administrateurs dans l'application, migrations automatiques. Voir `docs/DEPLOYMENT.md`.
+- **Hébergement : Vercel Hobby** (usage non commercial selon les conditions Vercel : risque accepté par l'agence). Le code doit rester compatible : fonctions ≤ 300 s, un seul cron quotidien.
+- **Code : le développeur garde le dépôt de référence**, réutilisable pour d'autres clients ; chaque client travaille sur sa copie (fork ou copie privée sur un compte GitHub personnel). Aucune personnalisation propre à un client ne doit être codée en dur : tout passe par la configuration (variables, base de données).
 
 ## Stack
 
@@ -30,7 +32,8 @@ Projets open source examinés : `EngAmi/meta-ads-growth-os` (MIT, tRPC/Express, 
 - **Seules les mesures additives sont stockées** (dépense, impressions, clics, clics lien, conversions, valeur). Tous les ratios sont recalculés à partir des sommes (`src/lib/metrics.ts`). Reach, fréquence et `unique_*` sont exclus : ils ne s'additionnent pas.
 - **Attribution : celle du compte publicitaire.** Depuis le 12/01/2026, Meta ignore `use_unified_attribution_setting`/`action_report_time` et aligne l'API sur Ads Manager ; aucune fenêtre n'est donc forcée. Les fenêtres `7d_view` et `28d_view` n'existent plus.
 - **Conversions = types d'action choisis par compte.** Les actions brutes sont conservées (`raw_actions`) pour recalculer sans re-synchroniser. Les alias d'un même événement (`purchase` / `omni_purchase` / `offsite_conversion.fb_pixel_purchase`) sont refusés ensemble (double comptage).
-- **Historique** : import initial de 395 jours, puis re-synchronisation quotidienne des 28 derniers jours (fenêtre d'attribution clic). Meta conserve 37 mois pour les totaux, 13 mois pour les métriques uniques et ventilations horaires.
+- **Historique** : import initial de 760 jours (« cette année » comparée à la période précédente, même au 31 décembre), du plus récent au plus ancien et **reprenable** (`history_from`). Chaque passage re-synchronise d'abord les 28 jours précédant la dernière synchronisation réussie (fenêtre d'attribution clic, sans trou après une panne), puis poursuit l'historique. Meta conserve 37 mois pour les totaux, 13 mois pour les métriques uniques et ventilations horaires.
+- **Durée** : aucune nouvelle tranche n'est lancée après 200 s (limite Vercel Hobby : 300 s) ; le passage est alors « partiel » et le suivant reprend. Un dashboard dont la période (ou la comparaison) commence avant l'historique disponible l'indique.
 - **Version Graph API** : `v24.0` par défaut, surchargeable (`META_GRAPH_API_VERSION`).
 
 ## Synchronisation

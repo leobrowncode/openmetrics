@@ -42,6 +42,8 @@ Dernière mise à jour : 19/10/2026.
 | Installation autonome : migrations automatiques au démarrage | ✅ (vérifié avec un vrai Postgres 16 en mode production) |
 | Clients, comptes publicitaires, rattachement exclusif | ✅ |
 | Synchronisation planifiée, idempotente, tracée, verrouillée | ✅ (cron non testé sur Vercel) |
+| Synchronisation compatible Vercel Hobby (≤ 300 s) : import reprenable, données récentes d'abord, exécutions interrompues clôturées | ✅ (`tests/sync.test.ts` ; mise à jour de schéma vérifiée sur Postgres 16) |
+| Avertissement si la période ou la comparaison dépasse l'historique importé | ✅ (`tests/sync.test.ts`) |
 | Dashboards multiples par client, à partir de modèles | ✅ |
 | Modèle de référence 4 sections (Investissements, Impressions et clics, CTR et CPC, Conversions) | ✅ (organisation déduite du brief ; capture Looker non reçue) |
 | Widgets configurables (KPI, graphique, tableau), sections, ordre | ✅ |

@@ -18,6 +18,7 @@ Current roadmap position:
 - Admin: auth (scrypt, rate limited), clients, ad accounts, conversion event config with overlap detection, dashboards (create/duplicate/delete/edit widgets), templates, Meta connections
 - Viewer: private links (hashed tokens, fragment-only URL, path-scoped HttpOnly cookie, revoke/renew/expiry), period + campaign filters, noindex/no-store/no-referrer
 - Reference template "Référence agence — 4 sections" (Investissements, Impressions et clics, CTR et CPC, Conversions)
+- Resumable, newest-first sync (`history_from`, 200 s budget, 760-day history, interrupted runs closed) for Vercel Hobby
 - Self-service for a client-owned instance: Postgres migrations on boot (advisory lock), "Se connecter avec Facebook" OAuth (ads_read, signed state cookie, token expiry tracking), Team page (admins, password change), install guide `docs/DEPLOYMENT.md`
 - Phase 2 research only: `docs/PHASE2_GOOGLE_SLIDES.md` (no code)
 
@@ -35,6 +36,7 @@ Current roadmap position:
 - VALIDATED 2026-10-20: CTR/CPC/CVR use link clicks (`inline_link_clicks`); CVR = conversions / link clicks; "all clicks" metrics stay available.
 - VALIDATED 2026-10-20: conversions = action types configured by the admin per ad account; overlapping aliases are rejected.
 - VALIDATED 2026-10-20: one instance per agency, owned by the agency (its Vercel/host, DB, Meta app). Everything must be administrable from the UI; Cursor secrets are only for agent testing.
+- VALIDATED 2026-10-20: Vercel Hobby (keep functions ≤ 300 s, one daily cron). Developer keeps `leobrowncode/openmetrics` as the reference repo; each client forks/copies it to a personal GitHub account → no client-specific hard-coding.
 - Avoid correlated subqueries with Drizzle single-table selects (columns render unqualified); use grouped counts (`src/server/admin/counts.ts`).
 - No attribution params are sent: Meta applies the account's attribution setting (same as Ads Manager since 2026-01-12).
 - Every dashboard query is scoped by `dashboard.clientId`; viewer access re-verifies the token hash on every request.
@@ -44,12 +46,12 @@ Current roadmap position:
 ## Known limitations / blockers
 
 - No real Meta token: KPI accuracy vs Ads Manager not verified (procedure in `docs/METRICS.md`).
-- No hosted instance yet: the agency deploys on its own account (`docs/DEPLOYMENT.md`). Vercel Hobby is non-commercial; Pro is paid → agency decision.
+- No hosted instance yet: the agency deploys on its own Vercel Hobby account from its copy of the repo (`docs/DEPLOYMENT.md`).
 - Meta OAuth never executed against real Meta (no app credentials); app mode / access tier behaviour to confirm on first real connection.
 - Looker Studio reference screenshot not provided: 4-section layout inferred from the brief.
 - Mobile layout not checked in a browser.
 - Breakdowns (age, gender, placement, creative) and adset/ad levels not implemented yet.
-- Business decisions pending: who owns the GitHub repo / how updates are delivered; hosting plan (Vercel Pro vs other).
+- No pending business decision.
 
 ## Validation baseline
 
@@ -65,7 +67,7 @@ npm run test:e2e    # playwright, starts DEMO_MODE dev server on :3100
 
 Current known baseline:
 
-- Unit/integration tests (Vitest): 59 passing
+- Unit/integration tests (Vitest): 63 passing
 - E2E tests (Playwright): 9 passing (dev/PGlite and `next start` + Postgres 16 via `E2E_BASE_URL`)
 - CI: none configured
 

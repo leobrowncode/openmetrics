@@ -8,11 +8,32 @@ Objectif : l'agence possède **sa propre instance**. Elle détient le compte d'h
 
 | Élément | Où | Coût |
 | --- | --- | --- |
-| Code source | Dépôt GitHub transféré à l'organisation du client (ou fork) | Gratuit |
-| Hébergement | Projet Vercel du client (ou tout hébergeur Node.js) | Voir « Coûts » |
+| Code source | Copie du dépôt de référence sur le compte GitHub **personnel** du client (voir étape 0) | Gratuit |
+| Hébergement | Projet Vercel **Hobby** du client (ou tout hébergeur Node.js) | Gratuit |
 | Base de données | Postgres (Neon via Vercel Marketplace, Supabase, ou autre) | Offre gratuite possible |
 | App Meta | developers.facebook.com, rattachée au Business Manager de l'agence | Gratuit |
 | Accès admin | Page **Équipe** de l'application | — |
+
+## 0. Copier le code
+
+Le dépôt de référence (`leobrowncode/openmetrics`) reste au développeur, qui peut le réutiliser pour d'autres clients. Le client travaille sur **sa copie**, sur son compte GitHub **personnel** : Vercel Hobby refuse les dépôts privés appartenant à une organisation GitHub.
+
+| | Fork (recommandé) | Copie privée |
+| --- | --- | --- |
+| Création | GitHub → dépôt de référence → **Fork** | GitHub → **Import repository** → URL du dépôt de référence → *Private* |
+| Visibilité | Publique (comme le dépôt de référence) | Privée |
+| Mises à jour | Bouton **Sync fork** sur GitHub → Vercel redéploie seul | Commandes `git` (ci-dessous) ou PR du développeur |
+
+Le code ne contient **aucun secret ni aucune donnée client** (tout est dans les variables Vercel et la base), un fork public est donc acceptable. Ne jamais committer de fichier `.env`.
+
+Mise à jour d'une copie privée :
+
+```bash
+git remote add upstream https://github.com/leobrowncode/openmetrics.git   # une seule fois
+git pull upstream main && git push origin main
+```
+
+Intervention du développeur sur la copie du client : le client l'ajoute en collaborateur, le développeur ouvre une **pull request**, et **le client la fusionne lui-même**. Sur Hobby, seuls les commits du propriétaire du compte Vercel déclenchent un déploiement : une fusion faite par le client est toujours déployée.
 
 ## 1. Base de données
 
@@ -82,8 +103,14 @@ avec les mêmes variables, HTTPS obligatoire, et une tâche planifiée quotidien
 curl -fsS -H "Authorization: Bearer $CRON_SECRET" https://<APP_URL>/api/cron/sync
 ```
 
-## Coûts (à valider par l'agence avant toute activation)
+## Vercel Hobby : limites et choix retenus
 
-- **Vercel** : l'offre Hobby (gratuite) est réservée à un usage personnel non commercial selon les conditions de Vercel ; un usage par une agence relève normalement de l'offre **Pro** (payante, par membre). Les limites de durée des fonctions et de cron dépendent de l'offre.
-- **Neon** : offre gratuite suffisante pour démarrer (quelques comptes publicitaires, données campagne × jour).
-- **Meta** : gratuit.
+Choix validé par l'agence (2026-10-20) : **Vercel Hobby**. Les conditions de Vercel réservent Hobby à un usage non commercial ; l'agence a accepté ce point. Passer en Pro plus tard ne demande aucune modification du code.
+
+| Limite Hobby | Effet sur l'application |
+| --- | --- |
+| Fonctions : 300 s maximum | Aucune synchronisation ne lance de nouvelle tranche après 200 s. L'import initial (25 mois) reprend où il s'est arrêté : au passage quotidien suivant, ou immédiatement via « Synchroniser ». Les données récentes sont importées en premier. |
+| Cron : une fois par jour, à l'heure près | Synchronisation quotidienne vers 04:00 UTC ; le bouton « Synchroniser » reste disponible à tout moment. |
+| Dépôt privé d'organisation interdit, collaboration limitée | Copie sur un compte GitHub personnel ; le client fusionne lui-même les mises à jour. |
+
+**Neon** (base) : offre gratuite suffisante pour démarrer. **Meta** : gratuit.

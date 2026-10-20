@@ -61,4 +61,4 @@ Alternative (token d'utilisateur système, sans expiration) :
 3. Générer un token avec **uniquement** `ads_read`.
 4. Admin → *Connexions Meta* → *Option avancée* → coller le token. Il est vérifié (`/me/permissions`), chiffré, jamais réaffiché.
 
-Ensuite : fiche client → rattacher un compte → choisir l'événement de conversion après l'import initial (13 mois).
+Ensuite : fiche client → rattacher un compte → choisir l'événement de conversion après l'import initial (25 mois, du plus récent au plus ancien).
