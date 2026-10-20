@@ -69,7 +69,15 @@ export function DashboardView({
           <TimeSeriesChart metrics={widget.metrics} series={data.series} range={data.range} currency={data.currency} chartStyle={widget.chartStyle} />
         );
       case "campaign_table":
-        return <CampaignTable metrics={widget.metrics} rows={data.byCampaign} totals={data.totals} currency={data.currency} />;
+        return (
+          <CampaignTable
+            title={widget.title}
+            metrics={widget.metrics}
+            rows={data.byCampaign}
+            totals={data.totals}
+            currency={data.currency}
+          />
+        );
     }
   };
 
@@ -125,7 +133,9 @@ export function DashboardView({
               <div className="space-y-4">
                 {section.widgets.map((widget) => (
                   <div key={widget.id} className={widget.type === "kpi" ? "" : "rounded-xl border border-slate-200 bg-white p-4 shadow-sm"}>
-                    {widget.title && widget.type !== "kpi" && <h3 className="mb-3 text-sm font-medium text-slate-700">{widget.title}</h3>}
+                    {widget.title && widget.type !== "kpi" && widget.type !== "campaign_table" && (
+                      <h3 className="mb-3 text-sm font-medium text-slate-700">{widget.title}</h3>
+                    )}
                     {renderWidget(widget)}
                   </div>
                 ))}

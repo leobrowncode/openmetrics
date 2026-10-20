@@ -53,6 +53,15 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   expect(spend).toMatch(/€/);
   const tableTotal = page.locator("tfoot td").nth(1);
   await expect(tableTotal).toHaveText(spend);
+
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  await page.getByRole("button", { name: "Copier le tableau" }).click();
+  await expect(page.getByRole("button", { name: "Copié" })).toBeVisible();
+  const pasted = await page.evaluate(() => navigator.clipboard.readText());
+  const lines = pasted.trim().split("\n");
+  expect(lines[0]).toBe("Campagne\tDépenses\tImpressions\tClics lien\tCTR lien\tCPC lien\tConversions\tCVR\tROAS");
+  expect(lines.at(-1)?.startsWith("Total\t")).toBe(true);
+  expect(lines.at(-1)).toContain(spend.replace(/\u202F|\u00A0/g, " "));
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/02-admin-dashboard.png`, fullPage: true });
 });
 
