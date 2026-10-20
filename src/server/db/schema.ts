@@ -85,6 +85,8 @@ export const adAccounts = pgTable(
     isActive: boolean("is_active").notNull().default(true),
     lastSyncedAt: timestamp("last_synced_at", { withTimezone: true }),
     lastSyncStatus: text("last_sync_status"),
+    /** Oldest day of the contiguous synced history (through today); null until the first chunk lands. */
+    historyFrom: date("history_from", { mode: "string" }),
     syncLockedUntil: timestamp("sync_locked_until", { withTimezone: true }),
     createdAt: createdAt(),
   },
@@ -142,7 +144,7 @@ export const syncRuns = pgTable(
       .notNull()
       .references(() => adAccounts.id, { onDelete: "cascade" }),
     trigger: text("trigger", { enum: ["cron", "manual", "backfill"] }).notNull(),
-    status: text("status", { enum: ["running", "success", "error", "skipped"] }).notNull(),
+    status: text("status", { enum: ["running", "success", "partial", "error", "skipped"] }).notNull(),
     rangeFrom: date("range_from", { mode: "string" }).notNull(),
     rangeTo: date("range_to", { mode: "string" }).notNull(),
     rowsWritten: integer("rows_written").notNull().default(0),

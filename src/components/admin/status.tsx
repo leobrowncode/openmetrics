@@ -4,6 +4,8 @@ export function SyncStatusBadge({ status }: { status: string | null }) {
   switch (status) {
     case "success":
       return <Badge tone="green">Synchronisé</Badge>;
+    case "partial":
+      return <Badge tone="amber">Historique en cours</Badge>;
     case "error":
       return <Badge tone="red">Erreur</Badge>;
     case "running":

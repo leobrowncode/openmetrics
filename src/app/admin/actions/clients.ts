@@ -91,7 +91,7 @@ export async function addAdAccountAction(_prev: ActionState | null, formData: Fo
   revalidatePath(`/admin/clients/${clientId}`);
   return {
     ok: true,
-    message: `Compte « ${info.name} » ajouté. L'historique (13 mois) est en cours d'import. Configurez ensuite le type de conversion.`,
+    message: `Compte « ${info.name} » ajouté. L'historique (25 mois) est en cours d'import, des données les plus récentes aux plus anciennes. Configurez ensuite le type de conversion.`,
   };
 }
 

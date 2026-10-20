@@ -1,7 +1,7 @@
 import "server-only";
 import { and, asc, between, eq, inArray, sql } from "drizzle-orm";
 import { addSums, emptySums, type Sums } from "@/lib/metrics";
-import { previousPeriod, type DateRange } from "@/lib/periods";
+import { formatDateFr, previousPeriod, type DateRange } from "@/lib/periods";
 import type { Db } from "../db/client";
 import { adAccounts, campaigns, dashboards, insightsDaily } from "../db/schema";
 
@@ -84,9 +84,21 @@ export async function getDashboardData(
     warnings.push("Le type de conversion n'est pas configuré pour au moins un compte : les conversions affichées sont à 0.");
   }
 
+  const previousRange = query.compare ? previousPeriod(query.range) : null;
+  const earliestNeeded = previousRange?.from ?? query.range.from;
+  const incomplete = accounts.filter((a) => !a.historyFrom || a.historyFrom > earliestNeeded);
+  if (incomplete.length > 0) {
+    const available = incomplete.map((a) => a.historyFrom);
+    warnings.push(
+      available.some((d) => d === null)
+        ? "Import de l'historique en cours : les chiffres sont encore incomplets."
+        : `Données disponibles à partir du ${formatDateFr(available.sort().at(-1)!)} seulement : les jours antérieurs ne sont pas comptés${previousRange ? " (période de comparaison incluse)" : ""}.`,
+    );
+  }
+
   const base = {
     range: query.range,
-    previousRange: query.compare ? previousPeriod(query.range) : null,
+    previousRange,
     currency: currencies[0] ?? "EUR",
     timezoneName: timezones[0] ?? "Europe/Paris",
     lastSyncedAt: null as string | null,

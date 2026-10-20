@@ -4,12 +4,15 @@ import type { Db } from "@/server/db/client";
 import { adAccounts, insightsDaily, metaConnections, syncRuns } from "@/server/db/schema";
 import { createDemoSource } from "@/server/meta/demo-source";
 import { MetaApiError } from "@/server/meta/errors";
+import { getDashboardData } from "@/server/dashboards/data";
+import type { DateRange } from "@/lib/periods";
 import {
-  defaultSyncRange,
   observedActionTypes,
+  planSync,
   recomputeConversions,
   splitRange,
   syncAdAccount,
+  syncAllAccounts,
 } from "@/server/sync/sync-service";
 import { fakeSource, insightRow, seedClient, testDb } from "./helpers";
 
@@ -42,8 +45,88 @@ describe("sync", () => {
 
   it("backfills on first sync, then refreshes the attribution window", () => {
     const now = new Date("2026-10-19T12:00:00Z");
-    expect(defaultSyncRange("Europe/Paris", null, now).from).toBe("2025-09-19");
-    expect(defaultSyncRange("Europe/Paris", now, now)).toEqual({ from: "2026-09-21", to: "2026-10-19" });
+    const first = planSync({ timezoneName: "Europe/Paris", lastSyncedAt: null, historyFrom: null }, now);
+    expect(first.refresh).toEqual([{ from: "2026-09-21", to: "2026-10-19" }]);
+    expect(first.backfill[0].to).toBe("2026-09-20");
+    expect(first.backfill.at(-1)!.from).toBe("2024-09-19");
+    expect(first.backfill.every((c, i) => i === 0 || c.to < first.backfill[i - 1].from)).toBe(true);
+
+    const daily = planSync({ timezoneName: "Europe/Paris", lastSyncedAt: now, historyFrom: "2024-09-19" }, now);
+    expect(daily.refresh).toEqual([{ from: "2026-09-21", to: "2026-10-19" }]);
+    expect(daily.backfill).toEqual([]);
+  });
+
+  it("refreshes from the last successful sync after an outage, leaving no stale gap", () => {
+    const now = new Date("2026-10-19T12:00:00Z");
+    const plan = planSync(
+      { timezoneName: "Europe/Paris", lastSyncedAt: new Date("2026-09-01T03:00:00Z"), historyFrom: "2024-09-19" },
+      now,
+    );
+    expect(plan.refreshFrom).toBe("2026-08-04");
+    expect(plan.refresh.at(-1)!.from).toBe("2026-08-04");
+    expect(plan.refresh[0].to).toBe("2026-10-19");
+  });
+
+  it("stops at the time budget and resumes the backfill where it stopped", async () => {
+    const { account, dashboard } = await seedClient(db, "A", "act_1");
+    const now = new Date("2026-10-19T12:00:00Z");
+    let t = 0;
+    const fetched: DateRange[] = [];
+    const source = () =>
+      fakeSource((range) => {
+        t += 400;
+        fetched.push(range);
+        return [insightRow("c1", range.to, 1)];
+      });
+
+    const first = await syncAdAccount(db, account.id, { trigger: "backfill", now, sourceFactory: source, deadline: 1000, clock: () => t });
+    expect(first.status).toBe("partial");
+    expect(fetched).toHaveLength(3);
+    let [acc] = await db.select().from(adAccounts).where(eq(adAccounts.id, account.id));
+    expect(acc.lastSyncedAt).not.toBeNull();
+    expect(acc.historyFrom).toBe(fetched[2].from);
+    expect(acc.lastSyncStatus).toBe("partial");
+    expect(acc.syncLockedUntil).toBeNull();
+
+    const recent = await getDashboardData(db, dashboard, { range: { from: "2026-10-01", to: "2026-10-18" }, compare: true });
+    expect(recent.warnings.filter((w) => w.includes("Données disponibles"))).toEqual([]);
+    const yearly = await getDashboardData(db, dashboard, { range: { from: "2026-01-01", to: "2026-10-18" }, compare: true });
+    expect(yearly.warnings.some((w) => w.includes(`Données disponibles à partir du`) && w.includes("comparaison"))).toBe(true);
+
+    const firstBackfill = fetched.slice(1).map((r) => r.from);
+    fetched.length = 0;
+    const second = await syncAdAccount(db, account.id, { trigger: "cron", now, sourceFactory: source, deadline: Infinity, clock: () => t });
+    expect(second.status).toBe("success");
+    expect(fetched[0]).toEqual({ from: "2026-09-21", to: "2026-10-19" });
+    expect(fetched.slice(1).some((r) => firstBackfill.includes(r.from))).toBe(false);
+    [acc] = await db.select().from(adAccounts).where(eq(adAccounts.id, account.id));
+    expect(acc.historyFrom).toBe("2024-09-19");
+    expect((await totals(db, account.id)).rows).toBe(3 + fetched.length - 1);
+
+    const yearlyAfter = await getDashboardData(db, dashboard, { range: { from: "2026-01-01", to: "2026-10-18" }, compare: true });
+    expect(yearlyAfter.warnings.filter((w) => w.includes("Données disponibles"))).toEqual([]);
+  });
+
+  it("keeps cron runs within the shared time budget", async () => {
+    await seedClient(db, "A", "act_1");
+    await seedClient(db, "B", "act_2");
+    const results = await syncAllAccounts(db, { budgetMs: 0, sourceFactory: () => fakeSource(() => []) });
+    expect(results.length).toBeLessThanOrEqual(1);
+  });
+
+  it("closes runs killed by the platform time limit", async () => {
+    const { account } = await seedClient(db, "A", "act_1");
+    const [stale] = await db
+      .insert(syncRuns)
+      .values({ adAccountId: account.id, trigger: "cron", status: "running", rangeFrom: "2026-10-01", rangeTo: "2026-10-19" })
+      .returning();
+    await syncAdAccount(db, account.id, {
+      trigger: "manual",
+      range: { from: "2026-10-01", to: "2026-10-01" },
+      sourceFactory: () => fakeSource(() => []),
+    });
+    const [run] = await db.select().from(syncRuns).where(eq(syncRuns.id, stale.id));
+    expect(run).toMatchObject({ status: "error", errorCode: "interrupted" });
   });
 
   it("is idempotent: re-running the same sync yields identical data", async () => {

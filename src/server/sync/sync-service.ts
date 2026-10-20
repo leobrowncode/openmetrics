@@ -12,8 +12,8 @@ import { normalizeInsightRow, NormalizationError, type NormalizedInsight } from 
 
 /** Conversions keep changing for ~28 days because of click attribution windows. */
 export const ATTRIBUTION_REFRESH_DAYS = 28;
-/** First sync history; Meta keeps 37 months of non-breakdown totals. */
-export const INITIAL_BACKFILL_DAYS = 395;
+/** Enough history to compare "this year" with the previous period on 31 December; Meta keeps 37 months of totals. */
+export const INITIAL_BACKFILL_DAYS = 760;
 const CHUNK_DAYS = 31;
 const LOCK_MINUTES = 15;
 const INSERT_BATCH = 500;
@@ -22,7 +22,8 @@ export type SyncTrigger = "cron" | "manual" | "backfill";
 
 export interface SyncResult {
   runId: string | null;
-  status: "success" | "error" | "skipped";
+  /** partial: stopped at the time budget; the next run resumes where it stopped. */
+  status: "success" | "partial" | "error" | "skipped";
   rowsWritten: number;
   range: DateRange | null;
   errorMessage?: string;
@@ -50,14 +51,42 @@ export function splitRange(range: DateRange, chunkDays = CHUNK_DAYS): DateRange[
   return chunks;
 }
 
-export function defaultSyncRange(
-  timezoneName: string,
-  lastSyncedAt: Date | null,
+/**
+ * Stop starting new chunks after this long. Vercel Hobby kills functions at
+ * 300 s; the margin covers the chunk in flight (including rate-limit waits).
+ */
+export const SYNC_TIME_BUDGET_MS = 200_000;
+
+export interface SyncPlan {
+  /** Recent days whose figures may still change; newest chunk first. */
+  refresh: DateRange[];
+  /** Older history not imported yet; newest chunk first, resumable. */
+  backfill: DateRange[];
+  refreshFrom: string;
+}
+
+/**
+ * Refreshes the attribution window counted from the last completed refresh
+ * (so an outage longer than 28 days leaves no stale gap), then continues the
+ * initial import backwards from the oldest day already stored.
+ */
+export function planSync(
+  account: { timezoneName: string; lastSyncedAt: Date | null; historyFrom: string | null },
   now: Date = new Date(),
-): DateRange {
-  const today = todayInTimezone(timezoneName, now);
-  const lookback = lastSyncedAt ? ATTRIBUTION_REFRESH_DAYS : INITIAL_BACKFILL_DAYS;
-  return { from: addDays(today, -lookback), to: today };
+): SyncPlan {
+  const today = todayInTimezone(account.timezoneName, now);
+  const oldest = addDays(today, -INITIAL_BACKFILL_DAYS);
+  const lastDay = account.lastSyncedAt ? todayInTimezone(account.timezoneName, account.lastSyncedAt) : today;
+  const anchor = lastDay < today ? lastDay : today;
+  const candidate = addDays(anchor, -ATTRIBUTION_REFRESH_DAYS);
+  const refreshFrom = candidate > oldest ? candidate : oldest;
+  const historyStart = account.historyFrom && account.historyFrom < refreshFrom ? account.historyFrom : refreshFrom;
+  const backfillTo = addDays(historyStart, -1);
+  return {
+    refresh: splitRange({ from: refreshFrom, to: today }).reverse(),
+    backfill: backfillTo >= oldest ? splitRange({ from: oldest, to: backfillTo }).reverse() : [],
+    refreshFrom,
+  };
 }
 
 function toErrorInfo(error: unknown): { code: string; message: string } {
@@ -127,18 +156,32 @@ async function writeChunk(db: Db, accountId: string, chunk: DateRange, rows: Nor
   });
 }
 
-export async function syncAdAccount(
-  db: Db,
-  accountId: string,
-  options: { trigger: SyncTrigger; range?: DateRange; sourceFactory?: SourceFactory; now?: Date } = {
-    trigger: "manual",
-  },
-): Promise<SyncResult> {
+interface SyncOptions {
+  trigger: SyncTrigger;
+  /** Explicit window (tests, targeted re-syncs). Without it, the account's sync plan is used. */
+  range?: DateRange;
+  sourceFactory?: SourceFactory;
+  now?: Date;
+  /** Epoch ms after which no new chunk is started. */
+  deadline?: number;
+  clock?: () => number;
+}
+
+export async function syncAdAccount(db: Db, accountId: string, options: SyncOptions = { trigger: "manual" }): Promise<SyncResult> {
   const now = options.now ?? new Date();
+  const clock = options.clock ?? Date.now;
+  const deadline = options.deadline ?? clock() + SYNC_TIME_BUDGET_MS;
   const [account] = await db.select().from(adAccounts).where(eq(adAccounts.id, accountId));
   if (!account) throw new Error("Compte publicitaire introuvable.");
 
-  const range = options.range ?? defaultSyncRange(account.timezoneName, account.lastSyncedAt, now);
+  const plan = options.range ? null : planSync(account, now);
+  const refresh = plan ? plan.refresh : splitRange(options.range!);
+  const backfill = plan ? plan.backfill : [];
+  const all = [...refresh, ...backfill];
+  const range: DateRange = {
+    from: all.reduce((min, c) => (c.from < min ? c.from : min), all[0].from),
+    to: all.reduce((max, c) => (c.to > max ? c.to : max), all[0].to),
+  };
 
   if (!(await acquireLock(db, accountId, now))) {
     const [run] = await db
@@ -156,6 +199,12 @@ export async function syncAdAccount(
     return { runId: run.id, status: "skipped", rowsWritten: 0, range };
   }
 
+  // Holding the lock means no run is in progress: a "running" row was killed by the platform time limit.
+  await db
+    .update(syncRuns)
+    .set({ status: "error", errorCode: "interrupted", errorMessage: "Synchronisation interrompue (limite de durée de l'hébergement).", finishedAt: now })
+    .where(and(eq(syncRuns.adAccountId, accountId), eq(syncRuns.status, "running")));
+
   const [run] = await db
     .insert(syncRuns)
     .values({ adAccountId: accountId, trigger: options.trigger, status: "running", rangeFrom: range.from, rangeTo: range.to })
@@ -163,30 +212,69 @@ export async function syncAdAccount(
 
   let source: InsightsSource | null = null;
   let rowsWritten = 0;
+  let chunksDone = 0;
+  let stopped = false;
+  const syncChunk = async (chunk: DateRange) => {
+    const raw = await source!.fetchCampaignDailyInsights(account.metaAccountId, chunk);
+    const normalized = raw.map((row) => normalizeInsightRow(row, account.conversionActionTypes));
+    const outOfRange = normalized.find((r) => r.date < chunk.from || r.date > chunk.to);
+    if (outOfRange) {
+      throw new NormalizationError(`Date hors période reçue de Meta : ${outOfRange.date}.`);
+    }
+    await writeChunk(db, accountId, chunk, normalized);
+    rowsWritten += normalized.length;
+    chunksDone += 1;
+  };
+  // At least one chunk always runs, so every invocation makes progress.
+  const outOfTime = () => chunksDone > 0 && clock() >= deadline;
+
   try {
     const [connection] = await db.select().from(metaConnections).where(eq(metaConnections.id, account.connectionId));
     if (!connection) throw new Error("Connexion Meta introuvable.");
     source = (options.sourceFactory ?? defaultSourceFactory)(connection);
 
-    for (const chunk of splitRange(range)) {
-      const raw = await source.fetchCampaignDailyInsights(account.metaAccountId, chunk);
-      const normalized = raw.map((row) => normalizeInsightRow(row, account.conversionActionTypes));
-      const outOfRange = normalized.find((r) => r.date < chunk.from || r.date > chunk.to);
-      if (outOfRange) {
-        throw new NormalizationError(`Date hors période reçue de Meta : ${outOfRange.date}.`);
+    for (const chunk of refresh) {
+      if (outOfTime()) {
+        stopped = true;
+        break;
       }
-      await writeChunk(db, accountId, chunk, normalized);
-      rowsWritten += normalized.length;
+      await syncChunk(chunk);
+    }
+    if (!stopped) {
+      const historyFrom = plan
+        ? account.historyFrom && account.historyFrom < plan.refreshFrom
+          ? account.historyFrom
+          : plan.refreshFrom
+        : account.historyFrom;
+      await db
+        .update(adAccounts)
+        .set({ lastSyncedAt: new Date(), historyFrom })
+        .where(eq(adAccounts.id, accountId));
+      for (const chunk of backfill) {
+        if (outOfTime()) {
+          stopped = true;
+          break;
+        }
+        await syncChunk(chunk);
+        await db.update(adAccounts).set({ historyFrom: chunk.from }).where(eq(adAccounts.id, accountId));
+      }
     }
 
+    const status = stopped ? "partial" : "success";
     const finishedAt = new Date();
     await db
       .update(syncRuns)
-      .set({ status: "success", rowsWritten, apiCalls: source.apiCalls, finishedAt })
+      .set({
+        status,
+        rowsWritten,
+        apiCalls: source.apiCalls,
+        finishedAt,
+        errorMessage: stopped ? "Limite de durée atteinte : la suite de l'historique sera importée au prochain passage." : null,
+      })
       .where(eq(syncRuns.id, run.id));
     await db
       .update(adAccounts)
-      .set({ lastSyncedAt: finishedAt, lastSyncStatus: "success", syncLockedUntil: null })
+      .set({ lastSyncStatus: status, syncLockedUntil: null })
       .where(eq(adAccounts.id, accountId));
     if (connection.status !== "active") {
       await db
@@ -194,7 +282,7 @@ export async function syncAdAccount(
         .set({ status: "active", lastError: null, lastCheckedAt: finishedAt })
         .where(eq(metaConnections.id, connection.id));
     }
-    return { runId: run.id, status: "success", rowsWritten, range };
+    return { runId: run.id, status, rowsWritten, range };
   } catch (error) {
     const info = toErrorInfo(error);
     if (info.code === "internal") console.error("[sync] internal error", { accountId, error });
@@ -233,6 +321,7 @@ export async function syncAllAccounts(
   options: { budgetMs: number; sourceFactory?: SourceFactory; trigger?: SyncTrigger },
 ): Promise<Array<SyncResult & { accountId: string }>> {
   const startedAt = Date.now();
+  const deadline = startedAt + options.budgetMs;
   const accounts = await db
     .select({ id: adAccounts.id })
     .from(adAccounts)
@@ -241,10 +330,11 @@ export async function syncAllAccounts(
 
   const results: Array<SyncResult & { accountId: string }> = [];
   for (const { id } of accounts) {
-    if (Date.now() - startedAt > options.budgetMs) break;
+    if (Date.now() >= deadline) break;
     const result = await syncAdAccount(db, id, {
       trigger: options.trigger ?? "cron",
       sourceFactory: options.sourceFactory,
+      deadline,
     });
     results.push({ accountId: id, ...result });
   }
