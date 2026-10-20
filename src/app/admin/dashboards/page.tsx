@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { Card, EmptyState, PageHeader, formatDateTime } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { clients, dashboards, shareLinks } from "@/server/db/schema";
+import { activeLinkCountsByDashboard } from "@/server/admin/counts";
+import { clients, dashboards } from "@/server/db/schema";
 
 export default async function DashboardsPage() {
   await requireAdmin();
@@ -14,11 +15,11 @@ export default async function DashboardsPage() {
       name: dashboards.name,
       clientName: clients.name,
       updatedAt: dashboards.updatedAt,
-      activeLinks: sql<number>`(select count(*)::int from ${shareLinks} where ${shareLinks.dashboardId} = ${dashboards.id} and ${shareLinks.revokedAt} is null and (${shareLinks.expiresAt} is null or ${shareLinks.expiresAt} > now()))`,
     })
     .from(dashboards)
     .innerJoin(clients, eq(clients.id, dashboards.clientId))
     .orderBy(clients.name, desc(dashboards.updatedAt));
+  const activeLinks = await activeLinkCountsByDashboard(db);
 
   return (
     <>
@@ -50,7 +51,7 @@ export default async function DashboardsPage() {
                     </Link>
                   </td>
                   <td className="px-5 py-3 text-slate-700">{d.clientName}</td>
-                  <td className="px-5 py-3 tabular">{d.activeLinks}</td>
+                  <td className="px-5 py-3 tabular">{activeLinks.get(d.id) ?? 0}</td>
                   <td className="px-5 py-3 text-slate-500">{formatDateTime(d.updatedAt)}</td>
                 </tr>
               ))}

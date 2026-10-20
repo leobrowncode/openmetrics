@@ -1,10 +1,10 @@
-import { sql } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConnectionStatusBadge, TokenExpiryBadge, isTokenExpiringSoon } from "@/components/admin/status";
 import { Badge, Button, Card, CardHeader, Field, Notice, PageHeader, buttonClass, formatDateTime, inputClass } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { adAccounts, metaConnections } from "@/server/db/schema";
+import { accountCountsByConnection } from "@/server/admin/counts";
+import { metaConnections } from "@/server/db/schema";
 import { metaOAuthConfig } from "@/server/meta/connections";
 import { META_OAUTH_PATH, META_OAUTH_RESULTS, metaRedirectUri, type MetaOAuthResult } from "@/server/meta/oauth-flow";
 import { appOrigin } from "../actions/context";
@@ -13,13 +13,11 @@ import { createConnectionAction, deleteConnectionAction, replaceTokenAction, tes
 export default async function ConnectionsPage({ searchParams }: PageProps<"/admin/connections">) {
   await requireAdmin();
   const db = await getDb();
-  const connections = await db
-    .select({
-      connection: metaConnections,
-      accounts: sql<number>`(select count(*)::int from ${adAccounts} where ${adAccounts.connectionId} = ${metaConnections.id})`,
-    })
-    .from(metaConnections)
-    .orderBy(metaConnections.label);
+  const accountCounts = await accountCountsByConnection(db);
+  const connections = (await db.select().from(metaConnections).orderBy(metaConnections.label)).map((connection) => ({
+    connection,
+    accounts: accountCounts.get(connection.id) ?? 0,
+  }));
 
   const oauthEnabled = metaOAuthConfig() !== null;
   const redirectUri = metaRedirectUri(await appOrigin());

@@ -1,24 +1,21 @@
 import Link from "next/link";
-import { sql } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { Card, CardHeader, EmptyState, Field, PageHeader, inputClass } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { adAccounts, clients, dashboards } from "@/server/db/schema";
+import { accountCountsByClient, dashboardCountsByClient } from "@/server/admin/counts";
+import { clients } from "@/server/db/schema";
 import { createClientAction } from "../actions/clients";
 
 export default async function ClientsPage() {
   await requireAdmin();
   const db = await getDb();
-  const rows = await db
-    .select({
-      id: clients.id,
-      name: clients.name,
-      accounts: sql<number>`(select count(*)::int from ${adAccounts} where ${adAccounts.clientId} = ${clients.id})`,
-      dashboards: sql<number>`(select count(*)::int from ${dashboards} where ${dashboards.clientId} = ${clients.id})`,
-    })
-    .from(clients)
-    .orderBy(clients.name);
+  const [accountCounts, dashboardCounts] = await Promise.all([accountCountsByClient(db), dashboardCountsByClient(db)]);
+  const rows = (await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name)).map((c) => ({
+    ...c,
+    accounts: accountCounts.get(c.id) ?? 0,
+    dashboards: dashboardCounts.get(c.id) ?? 0,
+  }));
 
   return (
     <>

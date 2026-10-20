@@ -50,6 +50,17 @@ test("Meta OAuth: read-only scope, CSRF state and cancellation", async ({ page, 
   await expect(page.getByText("Autorisation annulée sur Facebook")).toBeVisible();
 });
 
+test("listing counts reflect attached accounts and protect used connections", async ({ page }) => {
+  await login(page);
+  await page.goto("/admin/connections");
+  const demo = page.locator("div.rounded-xl").filter({ hasText: "Données synthétiques (démo)" }).first();
+  await expect(demo.getByText("2 compte(s) rattaché(s)")).toBeVisible();
+  await expect(demo.getByRole("button", { name: "Supprimer" })).toHaveCount(0);
+
+  await page.goto("/admin/clients");
+  await expect(page.getByRole("link", { name: /Association Horizon/ })).toContainText("1 compte(s) · 1 dashboard(s)");
+});
+
 test("Meta OAuth endpoints require an admin session", async ({ request }) => {
   for (const path of ["/admin/connections/meta/start", "/admin/connections/meta/callback?code=abc&state=def"]) {
     const response = await request.get(path, { maxRedirects: 0 });
