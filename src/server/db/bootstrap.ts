@@ -34,8 +34,11 @@ export async function ensureBootstrap(db: Db, options: { demo: boolean }): Promi
   // the Team page is not overwritten.
   if (ADMIN_EMAIL && ADMIN_PASSWORD) {
     const synced = await syncEnvAdmin(db, ADMIN_EMAIL, ADMIN_PASSWORD);
+    const database = env().DATABASE_URL ? "postgres" : "embedded";
     if (synced !== "unchanged") {
-      console.info(`Bootstrap admin ${synced} for ${ADMIN_EMAIL.trim().toLowerCase()}`);
+      console.info(`Bootstrap admin ${synced} for ${ADMIN_EMAIL.trim().toLowerCase()} via ${database}`);
+    } else {
+      console.info(`Bootstrap admin already matches ${ADMIN_EMAIL.trim().toLowerCase()} via ${database}`);
     }
   }
   // Demo credentials stay available on a DEMO_MODE instance, including production,
