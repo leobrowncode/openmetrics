@@ -55,13 +55,27 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await expect(tableTotal).toHaveText(spend);
 
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  await page.getByRole("button", { name: "Copier le tableau" }).click();
-  await expect(page.getByRole("button", { name: "Copié" })).toBeVisible();
+  const campaignCard = page.locator("div.rounded-xl.border").filter({
+    has: page.getByRole("heading", { name: "Performances par campagne", exact: true }),
+  });
+  await campaignCard.getByRole("button", { name: "Copier le tableau" }).click();
+  await expect(campaignCard.getByRole("button", { name: "Tableau copié" })).toBeVisible();
   const pasted = await page.evaluate(() => navigator.clipboard.readText());
   const lines = pasted.trim().split("\n");
   expect(lines[0]).toBe("Campagne\tDépenses\tImpressions\tClics lien\tCTR lien\tCPC lien\tConversions\tCVR\tROAS");
   expect(lines.at(-1)?.startsWith("Total\t")).toBe(true);
   expect(lines.at(-1)).toContain(spend.replace(/\u202F|\u00A0/g, " "));
+
+  const chartCard = page.locator("div.rounded-xl.border").filter({
+    has: page.getByRole("heading", { name: "Évolution du montant dépensé", exact: true }),
+  });
+  await chartCard.getByRole("button", { name: "Copier le tableau" }).click();
+  await expect(chartCard.getByRole("button", { name: "Tableau copié" })).toBeVisible();
+  const chartLines = (await page.evaluate(() => navigator.clipboard.readText())).trim().split("\n");
+  expect(chartLines[0]).toBe("Date\tDépenses");
+  expect(chartLines).toHaveLength(31);
+  expect(chartLines[1]).toMatch(/^\d{2}\/\d{2}\t/);
+  expect(chartLines.at(-1)).toMatch(/€/);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/02-admin-dashboard.png`, fullPage: true });
 });
 

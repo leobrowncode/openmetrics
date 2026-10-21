@@ -15,16 +15,20 @@ import {
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
 import type { DateRange } from "@/lib/periods";
 import { bucketSeries, formatBucket, pickGranularity } from "./aggregate";
+import { CopyTableButton } from "./CopyTableButton";
+import { seriesTableMatrix } from "./table-clipboard";
 
 const COLORS = ["#2753d8", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
 
 export function TimeSeriesChart({
+  title,
   metrics,
   series,
   range,
   currency,
   chartStyle = "line",
 }: {
+  title?: string;
   metrics: MetricKey[];
   series: Array<{ date: string } & Sums>;
   range: DateRange;
@@ -32,7 +36,8 @@ export function TimeSeriesChart({
   chartStyle?: "line" | "bar" | "area";
 }) {
   const granularity = pickGranularity(range);
-  const rows = bucketSeries(series, range, granularity).map((b) => {
+  const buckets = bucketSeries(series, range, granularity);
+  const rows = buckets.map((b) => {
     const point: Record<string, number | string | null> = { label: formatBucket(b.bucket, granularity) };
     for (const key of metrics) point[key] = computeMetric(key, b);
     return point;
@@ -49,11 +54,16 @@ export function TimeSeriesChart({
         : new Intl.NumberFormat("fr-FR", { notation: "compact", maximumFractionDigits: 1 }).format(v);
 
   return (
-    <div className="h-72 w-full">
-      <p className="mb-2 text-xs text-slate-400">
-        Granularité : {granularity === "day" ? "jour" : granularity === "week" ? "semaine" : "mois"}
-      </p>
-      <ResponsiveContainer width="100%" height="90%">
+    <div>
+      <div className="mb-3 flex items-center justify-between gap-2">
+        {title ? <h3 className="text-sm font-medium text-slate-700">{title}</h3> : <span />}
+        <CopyTableButton matrix={seriesTableMatrix(metrics, buckets, granularity, currency)} />
+      </div>
+      <div className="h-72 w-full">
+        <p className="mb-2 text-xs text-slate-400">
+          Granularité : {granularity === "day" ? "jour" : granularity === "week" ? "semaine" : "mois"}
+        </p>
+        <ResponsiveContainer width="100%" height="90%">
         <ComposedChart data={rows} margin={{ top: 4, right: 8, bottom: 0, left: 0 }}>
           <CartesianGrid stroke="#eef0f4" vertical={false} />
           <XAxis dataKey="label" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} minTickGap={16} />
@@ -76,7 +86,8 @@ export function TimeSeriesChart({
             return <Line key={key} isAnimationActive={false} yAxisId={axis} dataKey={key} stroke={color} strokeWidth={2} dot={false} type="linear" connectNulls={false} />;
           })}
         </ComposedChart>
-      </ResponsiveContainer>
+        </ResponsiveContainer>
+      </div>
     </div>
   );
 }

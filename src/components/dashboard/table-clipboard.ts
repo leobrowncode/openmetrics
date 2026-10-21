@@ -1,4 +1,5 @@
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import { formatBucket, type Granularity } from "./aggregate";
 
 export interface CampaignTableRow extends Sums {
   campaignId: string;
@@ -8,6 +9,27 @@ export interface CampaignTableRow extends Sums {
 /** Text shown in the dashboard, with narrow spaces normalized for paste targets. */
 export function clipboardMetric(key: MetricKey, sums: Sums, currency: string): string {
   return formatMetric(key, computeMetric(key, sums), currency).replace(/\u202F|\u00A0/g, " ");
+}
+
+const PERIOD_HEADER: Record<Granularity, string> = {
+  day: "Date",
+  week: "Semaine",
+  month: "Mois",
+};
+
+/** One row per point drawn on a chart, with the same labels and formatted values. */
+export function seriesTableMatrix(
+  metrics: MetricKey[],
+  buckets: Array<{ bucket: string } & Sums>,
+  granularity: Granularity,
+  currency: string,
+): string[][] {
+  const header = [PERIOD_HEADER[granularity], ...metrics.map((key) => getMetric(key).shortLabel)];
+  const body = buckets.map((bucket) => [
+    formatBucket(bucket.bucket, granularity),
+    ...metrics.map((key) => clipboardMetric(key, bucket, currency)),
+  ]);
+  return [header, ...body];
 }
 
 export function campaignTableMatrix(
