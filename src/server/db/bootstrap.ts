@@ -1,7 +1,7 @@
 import "server-only";
 import { eq, sql } from "drizzle-orm";
 import { REFERENCE_TEMPLATE_CONFIG } from "@/lib/dashboard-config";
-import { createAdminUser } from "../auth/admin";
+import { createAdminUser, syncEnvAdmin } from "../auth/admin";
 import { addDays, todayInTimezone } from "@/lib/periods";
 import { env } from "../env";
 import { DEMO_ACCOUNTS } from "../meta/demo-source";
@@ -27,16 +27,22 @@ export async function ensureBootstrap(db: Db, options: { demo: boolean }): Promi
   }
 
   const [{ count: adminCount }] = await db.select({ count: sql<number>`count(*)::int` }).from(adminUsers);
-  if (adminCount === 0) {
-    const { ADMIN_EMAIL, ADMIN_PASSWORD } = env();
-    if (ADMIN_EMAIL && ADMIN_PASSWORD) {
-      await createAdminUser(db, ADMIN_EMAIL, ADMIN_PASSWORD);
+  const { ADMIN_EMAIL, ADMIN_PASSWORD } = env();
+  // While these variables stay set, they are the password for that email.
+  // Changing ADMIN_PASSWORD (or fixing a trailing newline) takes effect on the
+  // next request. Remove them after the first login so a password chosen in
+  // the Team page is not overwritten.
+  if (ADMIN_EMAIL && ADMIN_PASSWORD) {
+    const synced = await syncEnvAdmin(db, ADMIN_EMAIL, ADMIN_PASSWORD);
+    if (synced !== "unchanged") {
+      const database = env().DATABASE_URL ? "postgres" : "embedded";
+      console.info(`Bootstrap admin ${synced} for ${ADMIN_EMAIL.trim().toLowerCase()} via ${database}`);
     }
-    // Demo credentials stay available on a DEMO_MODE instance, including production,
-    // so the synthetic dashboard can be opened without a client-supplied login.
-    if (options.demo) {
-      await createAdminUser(db, DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD);
-    }
+  }
+  // Demo credentials stay available on a DEMO_MODE instance, including production,
+  // so the synthetic dashboard can be opened without a client-supplied login.
+  if (adminCount === 0 && options.demo) {
+    await createAdminUser(db, DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD);
   }
 
   if (options.demo) await seedDemo(db);

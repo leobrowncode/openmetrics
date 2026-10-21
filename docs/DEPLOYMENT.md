@@ -50,7 +50,7 @@ Vercel → projet → **Settings → Environment Variables** (environnement *Pro
 | `TOKEN_HASH_SECRET` | `openssl rand -hex 32` | Empreintes des liens privés et sessions. La changer invalide tous les liens et déconnecte tout le monde. |
 | `CRON_SECRET` | `openssl rand -hex 24` | Protège la synchronisation automatique (Vercel l'envoie seul). |
 | `APP_URL` | `https://reporting.agence.fr` | Adresse publique ; sert aux liens privés et au retour Facebook. |
-| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | e-mail du responsable, mot de passe ≥ 12 caractères | Ne servent qu'à créer le **premier** compte. À supprimer après la première connexion. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | e-mail du responsable, mot de passe ≥ 12 caractères | Créent ce compte, puis **remplacent son mot de passe** à chaque démarrage tant qu'elles restent définies (les sessions de ce compte sont fermées). À supprimer après la première connexion, sinon un mot de passe choisi dans l'application est réécrasé. |
 | `META_APP_ID` / `META_APP_SECRET` | depuis l'app Meta (étape 4) | Activent « Se connecter avec Facebook ». |
 | `META_LOGIN_CONFIG_ID` | optionnel | Configuration *Facebook Login for Business* (étape 4). |
 | `DEMO_MODE` | `false` | Ne jamais activer sur l'instance réelle. |

@@ -27,7 +27,7 @@ Limite connue : un destinataire peut transférer le lien d'origine à un tiers. 
 - Chaque page et chaque action serveur appelle `requireAdmin()` ; les actions serveur Next.js vérifient l'origine (CSRF).
 - Journal d'audit (`audit_log`) des actions sensibles (liens, connexions, administrateurs, suppression).
 - Page Équipe : ajout d'administrateurs, retrait immédiat (sessions supprimées en cascade), impossible de se retirer soi-même ou de retirer le dernier admin. Changement de mot de passe : mot de passe actuel exigé, 8 essais / 15 min, autres sessions fermées.
-- `ADMIN_EMAIL`/`ADMIN_PASSWORD` ne créent un compte que si la base n'a aucun administrateur.
+- `ADMIN_EMAIL`/`ADMIN_PASSWORD` créent le compte correspondant s'il n'existe pas. Tant que ces variables restent définies, le mot de passe stocké pour cet e-mail est realigné sur `ADMIN_PASSWORD` (espaces autour ignorés) et les sessions de ce compte sont fermées. Les retirer après la première connexion, sinon le mot de passe choisi dans l'application est réécrasé. Les autres administrateurs ne sont pas touchés.
 
 ## Meta Ads
 

@@ -32,6 +32,36 @@ export function passwordProblem(password: string): string | null {
   return null;
 }
 
+/**
+ * Creates the bootstrap admin, or replaces that account's password when
+ * `ADMIN_PASSWORD` has changed. Other admins are left untouched. A replacement
+ * ends every session of this account. Surrounding whitespace is ignored so a
+ * trailing newline from the host does not make the typed password fail.
+ * Returns "unchanged" when the stored hash already matches.
+ */
+export async function syncEnvAdmin(
+  db: Db,
+  email: string,
+  password: string,
+): Promise<"created" | "updated" | "unchanged"> {
+  const normalized = email.trim().toLowerCase();
+  // Drop a trailing newline from the host, but keep a password that is only spaces.
+  const secret = password.trim() || password;
+  if (!normalized || !secret) return "unchanged";
+
+  const [user] = await db.select().from(adminUsers).where(eq(adminUsers.email, normalized));
+  if (!user) {
+    await createAdminUser(db, normalized, secret);
+    return "created";
+  }
+  if (await verifyPassword(secret, user.passwordHash)) return "unchanged";
+
+  await db.update(adminUsers).set({ passwordHash: await hashPassword(secret) }).where(eq(adminUsers.id, user.id));
+  await db.delete(adminSessions).where(eq(adminSessions.userId, user.id));
+  await audit(db, "env", "admin.password_sync", "admin_user", user.id);
+  return "updated";
+}
+
 /** Returns false when the email is already used. */
 export async function addAdminUser(db: Db, email: string, password: string): Promise<boolean> {
   const rows = await db
