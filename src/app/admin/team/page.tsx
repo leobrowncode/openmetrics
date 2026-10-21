@@ -70,8 +70,9 @@ export default async function TeamPage() {
                 </Field>
               </ActionForm>
               <Notice tone="blue">
-                Après l&apos;installation, changez le mot de passe défini dans <code>ADMIN_PASSWORD</code> puis supprimez cette variable de
-                l&apos;hébergement : elle ne sert qu&apos;à créer le tout premier compte.
+                Après l&apos;installation, changez le mot de passe puis supprimez <code>ADMIN_PASSWORD</code> de
+                l&apos;hébergement. Tant que cette variable reste définie, elle réécrit le mot de passe de <code>ADMIN_EMAIL</code> à
+                chaque démarrage.
               </Notice>
             </div>
           </Card>

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { addAdminUser, authenticate, changePassword, passwordProblem, removeAdminUser, resolveSession } from "@/server/auth/admin";
-import { adminUsers } from "@/server/db/schema";
+import { addAdminUser, authenticate, changePassword, passwordProblem, removeAdminUser, resolveSession, syncEnvAdmin } from "@/server/auth/admin";
+import { adminUsers, auditLog } from "@/server/db/schema";
 import { testDb } from "./helpers";
 
 describe("admin team management", () => {
@@ -39,6 +39,31 @@ describe("admin team management", () => {
       await changePassword(db, session.identity.userId, "wrong-password", "new-password-2026", session.token);
     }
     expect(await changePassword(db, session.identity.userId, "initial-password-1", "new-password-2026", session.token)).toBe("rate_limited");
+  });
+
+  it("realigns the bootstrap admin when ADMIN_PASSWORD changes and leaves other admins", async () => {
+    const db = await testDb();
+    await addAdminUser(db, "owner@agence.fr", "initial-password-1");
+    await addAdminUser(db, "freelance@agence.fr", "initial-password-2");
+    const session = (await authenticate(db, "owner@agence.fr", "initial-password-1"))!;
+
+    expect(await syncEnvAdmin(db, " Owner@Agence.fr ", "  replacement-password-2026\n")).toBe("updated");
+    expect(await resolveSession(db, session.token)).toBeNull();
+    expect(await authenticate(db, "owner@agence.fr", "initial-password-1")).toBeNull();
+    expect(await authenticate(db, "owner@agence.fr", "replacement-password-2026")).not.toBeNull();
+    expect(await authenticate(db, "freelance@agence.fr", "initial-password-2")).not.toBeNull();
+
+    const kept = (await authenticate(db, "owner@agence.fr", "replacement-password-2026"))!;
+    expect(await syncEnvAdmin(db, "owner@agence.fr", "replacement-password-2026")).toBe("unchanged");
+    expect(await resolveSession(db, kept.token)).not.toBeNull();
+    expect(await db.select().from(auditLog)).toHaveLength(1);
+  });
+
+  it("creates the bootstrap admin when that email is missing", async () => {
+    const db = await testDb();
+    expect(await syncEnvAdmin(db, "owner@agence.fr", "initial-password-1")).toBe("created");
+    expect(await syncEnvAdmin(db, "owner@agence.fr", "initial-password-1")).toBe("unchanged");
+    expect(await authenticate(db, "owner@agence.fr", "initial-password-1")).not.toBeNull();
   });
 
   it("removes another admin and revokes their sessions immediately, but never the last or oneself", async () => {
