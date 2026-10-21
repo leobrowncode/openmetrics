@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { emptySums, type Sums } from "@/lib/metrics";
-import { campaignTableMatrix, matrixToClipboard, matrixToTsv } from "@/components/dashboard/table-clipboard";
+import { campaignTableMatrix, matrixToClipboard, matrixToTsv, seriesTableMatrix } from "@/components/dashboard/table-clipboard";
 
 const sums = (partial: Partial<Sums>): Sums => ({ ...emptySums(), ...partial });
 
@@ -49,5 +49,23 @@ describe("campaign table clipboard", () => {
     expect(clip["text/html"]).toContain("<td>'=formule &amp; &lt;campagne&gt;</td>");
     expect(clip["text/html"]).not.toContain("<campagne>");
     expect(clip["text/plain"]).toBe(tsv);
+  });
+});
+
+describe("chart series clipboard", () => {
+  it("turns each plotted bucket into a pasteable row", () => {
+    const buckets = [
+      { bucket: "2026-01-05", ...sums({ spend: 12.5, impressions: 1000 }) },
+      { bucket: "2026-01-06", ...sums({ spend: 0, impressions: 0 }) },
+    ];
+    const matrix = seriesTableMatrix(["spend", "impressions"], buckets, "day", "EUR");
+    expect(matrix[0]).toEqual(["Date", "Dépenses", "Impressions"]);
+    expect(matrix[1][0]).toBe("05/01");
+    expect(matrix[1][1]).toMatch(/€/);
+    expect(matrix[2][0]).toBe("06/01");
+    expect(matrix[2][1]).toMatch(/0,00/);
+    expect(seriesTableMatrix(["spend"], buckets, "week", "EUR")[0][0]).toBe("Semaine");
+    expect(seriesTableMatrix(["spend"], buckets, "week", "EUR")[1][0]).toBe("sem. 05/01");
+    expect(seriesTableMatrix(["spend"], buckets, "month", "EUR")[0][0]).toBe("Mois");
   });
 });

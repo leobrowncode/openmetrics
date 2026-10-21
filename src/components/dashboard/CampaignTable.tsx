@@ -2,8 +2,8 @@
 
 import { useState } from "react";
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
-import { buttonClass } from "../ui";
-import { campaignTableMatrix, writeTableClipboard, type CampaignTableRow } from "./table-clipboard";
+import { CopyTableButton } from "./CopyTableButton";
+import { campaignTableMatrix, type CampaignTableRow } from "./table-clipboard";
 
 export function CampaignTable({
   title,
@@ -20,22 +20,11 @@ export function CampaignTable({
 }) {
   const [sortKey, setSortKey] = useState<MetricKey>(metrics[0]);
   const [desc, setDesc] = useState(true);
-  const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const sorted = [...rows].sort((a, b) => {
     const va = computeMetric(sortKey, a) ?? -Infinity;
     const vb = computeMetric(sortKey, b) ?? -Infinity;
     return desc ? vb - va : va - vb;
   });
-
-  async function copyTable() {
-    try {
-      await writeTableClipboard(campaignTableMatrix(metrics, sorted, totals, currency));
-      setCopyState("copied");
-    } catch {
-      setCopyState("error");
-    }
-    window.setTimeout(() => setCopyState("idle"), 2000);
-  }
 
   if (rows.length === 0) {
     return <p className="py-6 text-center text-sm text-slate-500">Aucune diffusion sur la période sélectionnée.</p>;
@@ -45,16 +34,8 @@ export function CampaignTable({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         {title ? <h3 className="text-sm font-medium text-slate-700">{title}</h3> : <span />}
-        <button type="button" className={buttonClass("secondary", "sm")} onClick={() => void copyTable()}>
-          {copyState === "copied" ? "Copié" : "Copier le tableau"}
-        </button>
+        <CopyTableButton matrix={campaignTableMatrix(metrics, sorted, totals, currency)} />
       </div>
-      <p className="sr-only" role="status">
-        {copyState === "copied" ? "Tableau copié dans le presse-papiers." : copyState === "error" ? "Impossible de copier le tableau." : ""}
-      </p>
-      {copyState === "error" && (
-        <p className="mb-2 text-xs text-red-700">Impossible de copier le tableau. Sélectionnez-le manuellement.</p>
-      )}
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
           <thead>
