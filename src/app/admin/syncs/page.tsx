@@ -14,17 +14,19 @@ const TRIGGER_LABELS = { cron: "Planifiée", manual: "Manuelle", backfill: "Impo
 export default async function SyncsPage() {
   await requireAdmin();
   const db = await getDb();
-  const accounts = await db
-    .select({ account: adAccounts, clientName: clients.name })
-    .from(adAccounts)
-    .innerJoin(clients, eq(clients.id, adAccounts.clientId))
-    .orderBy(clients.name, adAccounts.name);
-  const runs = await db
-    .select({ run: syncRuns, accountName: adAccounts.name })
-    .from(syncRuns)
-    .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
-    .orderBy(desc(syncRuns.startedAt))
-    .limit(100);
+  const [accounts, runs] = await Promise.all([
+    db
+      .select({ account: adAccounts, clientName: clients.name })
+      .from(adAccounts)
+      .innerJoin(clients, eq(clients.id, adAccounts.clientId))
+      .orderBy(clients.name, adAccounts.name),
+    db
+      .select({ run: syncRuns, accountName: adAccounts.name })
+      .from(syncRuns)
+      .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
+      .orderBy(desc(syncRuns.startedAt))
+      .limit(100),
+  ]);
 
   return (
     <>

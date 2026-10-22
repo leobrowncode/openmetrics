@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, Notice, PageHeader } from "@/components/ui";
-import { demoModeEnabled, listPublicDemoDashboards } from "@/server/demo/public-demo";
+import { demoModeEnabled, listPublicDemoDashboards, publicDemoStatus } from "@/server/demo/public-demo";
 import { getDb } from "@/server/db/client";
 
 export const dynamic = "force-dynamic";
@@ -11,8 +11,11 @@ export default async function Home() {
 
   let dashboards: Awaited<ReturnType<typeof listPublicDemoDashboards>> = [];
   let unavailable = false;
+  let hidden = false;
   try {
-    dashboards = await listPublicDemoDashboards(await getDb());
+    const db = await getDb();
+    hidden = (await publicDemoStatus(db)) === "hidden";
+    if (!hidden) dashboards = await listPublicDemoDashboards(db);
   } catch (error) {
     console.error("demo home failed", error);
     unavailable = true;
@@ -22,16 +25,26 @@ export default async function Home() {
     <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-10 sm:px-8">
       <PageHeader
         title="Démo OpenMetrics"
-        description="Deux clients fictifs, avec des statistiques Meta Ads entièrement synthétiques. Aucun compte publicitaire réel n'est connecté."
+        description={
+          hidden
+            ? "Les données de démonstration sont masquées."
+            : "Deux clients fictifs, avec des statistiques Meta Ads entièrement synthétiques. Aucun compte publicitaire réel n'est connecté."
+        }
         actions={
           <Link href="/login" className="text-sm font-medium text-brand-700 hover:underline">
             Espace agence
           </Link>
         }
       />
-      <Notice tone="blue" title="Données de démonstration">
-        Les chiffres sont générés pour illustrer le dashboard (dépenses, clics, conversions). Ils ne viennent pas de Meta.
-      </Notice>
+      {hidden ? (
+        <Notice tone="blue" title="Données de démonstration masquées">
+          Les chiffres synthétiques ne sont plus affichés. Un compte Meta réel est relié, ou l&apos;affichage a été désactivé dans Connexions Meta.
+        </Notice>
+      ) : (
+        <Notice tone="blue" title="Données de démonstration">
+          Les chiffres sont générés pour illustrer le dashboard (dépenses, clics, conversions). Ils ne viennent pas de Meta.
+        </Notice>
+      )}
 
       {unavailable && (
         <div className="mt-6">

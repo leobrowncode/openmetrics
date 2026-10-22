@@ -11,6 +11,11 @@ const securityHeaders = [
 const nextConfig: NextConfig = {
   // Every route is authenticated (admin session or share link) and rendered per request.
   cacheComponents: false,
+  // Admin routes are dynamic, so the client would otherwise refetch them on every click.
+  // Thirty seconds keeps menu changes fresh while making a return visit immediate.
+  experimental: {
+    staleTimes: { dynamic: 30 },
+  },
   poweredByHeader: false,
   serverExternalPackages: ["@electric-sql/pglite"],
   // Migrations are read from disk at runtime (see src/server/db/client.ts).
