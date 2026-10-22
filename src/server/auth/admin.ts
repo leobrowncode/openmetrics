@@ -1,4 +1,5 @@
 import "server-only";
+import { cache } from "react";
 import { and, eq, gt, lt, ne, sql } from "drizzle-orm";
 import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
@@ -163,10 +164,11 @@ export async function logout(): Promise<void> {
   store.delete(ADMIN_COOKIE);
 }
 
-export async function currentAdmin(): Promise<AdminIdentity | null> {
+/** Deduped for the request: the admin layout and the page both check the session. */
+export const currentAdmin = cache(async (): Promise<AdminIdentity | null> => {
   const token = (await cookies()).get(ADMIN_COOKIE)?.value;
   return resolveSession(await getDb(), token);
-}
+});
 
 /** Use at the top of every admin page and server action. */
 export async function requireAdmin(): Promise<AdminIdentity> {
