@@ -5,15 +5,19 @@ import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { activeLinkCountsByDashboard } from "@/server/admin/counts";
 import { clients, dashboards } from "@/server/db/schema";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 
 export default async function DashboardsPage() {
   await requireAdmin();
   const db = await getDb();
-  const [rows, activeLinks] = await Promise.all([
+  const scope = await loadSyntheticScope(db);
+  const hiddenClients = new Set(scope.syntheticClientIds);
+  const [listed, activeLinks] = await Promise.all([
     db
       .select({
         id: dashboards.id,
         name: dashboards.name,
+        clientId: dashboards.clientId,
         clientName: clients.name,
         updatedAt: dashboards.updatedAt,
       })
@@ -22,6 +26,7 @@ export default async function DashboardsPage() {
       .orderBy(clients.name, desc(dashboards.updatedAt)),
     activeLinkCountsByDashboard(db),
   ]);
+  const rows = listed.filter((dashboard) => !hiddenClients.has(dashboard.clientId));
 
   return (
     <>

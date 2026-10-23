@@ -20,21 +20,27 @@ import {
   setConversionTypesAction,
 } from "../../actions/clients";
 import { createDashboardAction } from "../../actions/dashboards";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 import { syncNowAction } from "../../actions/sync";
 
 export default async function ClientPage(props: PageProps<"/admin/clients/[clientId]">) {
   await requireAdmin();
   const { clientId } = await props.params;
   const db = await getDb();
+  const scope = await loadSyntheticScope(db);
+  if (scope.syntheticClientIds.includes(clientId)) notFound();
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) notFound();
 
-  const [accounts, clientDashboards, templates, connections] = await Promise.all([
+  const hiddenAccounts = new Set(scope.demoAccountIds);
+  const [accountRows, clientDashboards, templates, connectionRows] = await Promise.all([
     db.select().from(adAccounts).where(eq(adAccounts.clientId, clientId)).orderBy(adAccounts.name),
     db.select().from(dashboards).where(eq(dashboards.clientId, clientId)).orderBy(desc(dashboards.updatedAt)),
     db.select().from(dashboardTemplates).orderBy(desc(dashboardTemplates.builtIn), dashboardTemplates.name),
     db.select().from(metaConnections).where(eq(metaConnections.status, "active")),
   ]);
+  const accounts = accountRows.filter((account) => !hiddenAccounts.has(account.id));
+  const connections = connectionRows.filter((connection) => !(scope.hidden && connection.kind === "demo"));
   const observed = new Map(await Promise.all(accounts.map(async (a) => [a.id, await observedActionTypes(db, a.id)] as const)));
 
   return (

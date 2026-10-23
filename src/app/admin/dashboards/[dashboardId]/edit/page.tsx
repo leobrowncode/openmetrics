@@ -8,6 +8,7 @@ import { PERIOD_LABELS, PERIOD_PRESETS } from "@/lib/periods";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { adAccounts, clients, dashboards } from "@/server/db/schema";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 import {
   addSectionAction,
   addWidgetAction,
@@ -29,8 +30,15 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
   const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId));
   if (!dashboard) notFound();
   const config = parseDashboardConfig(dashboard.config);
-  const accounts = await db.select().from(adAccounts).where(eq(adAccounts.clientId, dashboard.clientId)).orderBy(adAccounts.name);
-  const allClients = await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name);
+  const scope = await loadSyntheticScope(db);
+  const hiddenAccounts = new Set(scope.demoAccountIds);
+  const hiddenClients = new Set(scope.syntheticClientIds);
+  const accounts = (await db.select().from(adAccounts).where(eq(adAccounts.clientId, dashboard.clientId)).orderBy(adAccounts.name)).filter(
+    (account) => !hiddenAccounts.has(account.id),
+  );
+  const allClients = (await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name)).filter(
+    (client) => !hiddenClients.has(client.id),
+  );
   const hidden = { dashboardId: dashboard.id };
 
   return (
