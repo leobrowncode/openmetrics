@@ -120,13 +120,22 @@ test("a model can be created, a viewer can rearrange the dashboard, and syntheti
   await page.goto("/admin/connections");
   await page.getByLabel("Données synthétiques sur le site").selectOption("hide");
   await page.getByRole("button", { name: "Enregistrer l'affichage" }).click();
-  await expect(page.getByText("Les données synthétiques sont masquées sur tout le site.")).toBeVisible();
+  await expect(page.getByText("masqués sur tout le site")).toBeVisible();
   await page.goto("/");
   await expect(page.getByText("Les données de démonstration sont masquées.")).toBeVisible();
   await expect(page.getByRole("link", { name: "Ouvrir le dashboard" })).toHaveCount(0);
 
+  await page.goto("/admin/clients");
+  await expect(page.getByRole("link", { name: /Association Horizon/ })).toHaveCount(0);
+  await expect(page.getByRole("link", { name: /Maison Lumen/ })).toHaveCount(0);
+  await page.goto("/admin/dashboards");
+  await expect(page.getByRole("link", { name: /Reporting Meta Ads/ })).toHaveCount(0);
   await page.goto("/admin/connections");
+  await expect(page.getByText("Données synthétiques (démo)")).toHaveCount(0);
+
   await page.getByLabel("Données synthétiques sur le site").selectOption("auto");
   await page.getByRole("button", { name: "Enregistrer l'affichage" }).click();
   await expect(page.getByText("tant qu'aucun compte Meta réel n'est relié.")).toBeVisible();
+  await page.goto("/admin/clients");
+  await expect(page.getByRole("link", { name: /Association Horizon/ })).toBeVisible();
 });
