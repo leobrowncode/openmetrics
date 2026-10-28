@@ -33,6 +33,7 @@ export default async function DashboardPreviewPage(props: PageProps<"/admin/dash
         mode="admin"
         title={dashboard.name}
         subtitle={client?.name}
+        dashboardId={dashboard.id}
       />
     </div>
   );

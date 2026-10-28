@@ -1,7 +1,7 @@
 import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
-import { dashboards, shareLinks } from "../db/schema";
+import { bilans, dashboards, shareLinks } from "../db/schema";
 import { generateToken, hashToken, isWellFormedToken } from "../security/tokens";
 
 export type ShareLink = typeof shareLinks.$inferSelect;
@@ -16,10 +16,19 @@ export function shareLinkState(link: Pick<ShareLink, "revokedAt" | "expiresAt">,
 }
 
 /** The token is returned once and never stored; only its keyed fingerprint is. */
+export class ShareLinkError extends Error {}
+
 export async function createShareLink(
   db: Db,
-  input: { dashboardId: string; label: string; expiresAt: Date | null },
+  input: { dashboardId: string; label: string; expiresAt: Date | null; bilanId?: string | null },
 ): Promise<{ link: ShareLink; token: string }> {
+  if (input.bilanId) {
+    const [bilan] = await db
+      .select({ id: bilans.id })
+      .from(bilans)
+      .where(and(eq(bilans.id, input.bilanId), eq(bilans.dashboardId, input.dashboardId)));
+    if (!bilan) throw new ShareLinkError("Bilan introuvable pour ce dashboard.");
+  }
   const token = generateToken();
   const [link] = await db
     .insert(shareLinks)
@@ -28,6 +37,7 @@ export async function createShareLink(
       label: input.label,
       tokenHash: hashToken(token, "share"),
       expiresAt: input.expiresAt,
+      bilanId: input.bilanId ?? null,
     })
     .returning();
   return { link, token };
@@ -57,7 +67,7 @@ export async function renewShareLink(
     .where(and(eq(shareLinks.id, linkId), eq(shareLinks.dashboardId, dashboardId)));
   if (!old) return null;
   await revokeShareLink(db, dashboardId, linkId);
-  return createShareLink(db, { dashboardId, label: old.label, expiresAt });
+  return createShareLink(db, { dashboardId, label: old.label, expiresAt, bilanId: old.bilanId });
 }
 
 export async function updateShareLinkExpiry(

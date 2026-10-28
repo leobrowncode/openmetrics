@@ -183,6 +183,23 @@ export const dashboards = pgTable(
   (t) => [index("dashboards_client_idx").on(t.clientId)],
 );
 
+/** A saved dashboard view: chosen campaigns and a date range frozen at creation. */
+export const bilans = pgTable(
+  "bilans",
+  {
+    id: id(),
+    dashboardId: text("dashboard_id")
+      .notNull()
+      .references(() => dashboards.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    campaignIds: jsonb("campaign_ids").$type<string[]>().notNull(),
+    rangeFrom: date("range_from", { mode: "string" }).notNull(),
+    rangeTo: date("range_to", { mode: "string" }).notNull(),
+    createdAt: createdAt(),
+  },
+  (t) => [index("bilans_dashboard_idx").on(t.dashboardId)],
+);
+
 /** Private viewer links. Only an HMAC-SHA256 fingerprint of the token is stored. */
 export const shareLinks = pgTable(
   "share_links",
@@ -191,6 +208,8 @@ export const shareLinks = pgTable(
     dashboardId: text("dashboard_id")
       .notNull()
       .references(() => dashboards.id, { onDelete: "cascade" }),
+    /** When set, the link opens this bilan and ignores period or campaign query parameters. */
+    bilanId: text("bilan_id").references(() => bilans.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
     expiresAt: timestamp("expires_at", { withTimezone: true }),

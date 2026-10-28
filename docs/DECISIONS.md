@@ -6,7 +6,8 @@ Chaque décision indique ce qui contraint les développements suivants.
 
 - **Clics = clics sur un lien** (`inline_link_clicks`) pour le CTR, le CPC et le taux de conversion. Les variantes « tous les clics » restent disponibles comme widgets, clairement libellées « (tous) ».
 - **Taux de conversion = conversions ÷ clics sur un lien.**
-- **Événement de conversion configuré par l'admin, compte par compte** (fiche client), avec refus des alias qui se recouvrent.
+- **Événement de conversion configuré par l'admin, compte par compte** (fiche client), avec refus des alias qui se recouvrent. Le dashboard affiche le nom de cet événement (Achats, Prospects…) à la place du libellé générique « Conversions ». Le type technique Meta reste en mention secondaire.
+- **Un client, un compte Meta pour l’instant.** Une fois un compte rattaché, la fiche client ne propose pas d’en ajouter un second. Lier un compte Google Ads au même client est prévu en V2, pas avant.
 - **Hébergement : une instance par agence, possédée par elle** (son Vercel ou autre, sa base, son app Meta). L'agence doit pouvoir tout administrer seule : connexion Meta en libre-service, gestion des administrateurs dans l'application, migrations automatiques. Voir `docs/DEPLOYMENT.md`.
 - **Hébergement : Vercel Hobby** (usage non commercial selon les conditions Vercel : risque accepté par l'agence). Le code doit rester compatible : fonctions ≤ 300 s, un seul cron quotidien.
 - **Code : le développeur garde le dépôt de référence**, réutilisable pour d'autres clients ; chaque client travaille sur sa copie (fork ou copie privée sur un compte GitHub personnel). Aucune personnalisation propre à un client ne doit être codée en dur : tout passe par la configuration (variables, base de données).

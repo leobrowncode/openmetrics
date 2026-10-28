@@ -7,6 +7,7 @@ import { Badge, Button, Card, CardHeader, EmptyState, Field, Notice, PageHeader,
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { adAccounts, clients, dashboards, dashboardTemplates, metaConnections } from "@/server/db/schema";
+import { actionLabel } from "@/lib/conversion-actions";
 import { defaultSourceFactory, observedActionTypes } from "@/server/sync/sync-service";
 import type { MetaAdAccountInfo } from "@/server/meta/source";
 import { describeMetaError, MetaApiError } from "@/server/meta/errors";
@@ -35,7 +36,7 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
   const linked = new Set((await db.select({ id: adAccounts.metaAccountId }).from(adAccounts)).map((a) => a.id));
 
   const available: Array<{ connectionId: string; connectionLabel: string; accounts: MetaAdAccountInfo[]; error?: string }> = [];
-  for (const connection of connections) {
+  if (accounts.length === 0) for (const connection of connections) {
     try {
       const list = await defaultSourceFactory(connection).listAdAccounts();
       available.push({ connectionId: connection.id, connectionLabel: connection.label, accounts: list.filter((a) => !linked.has(a.metaAccountId)) });
@@ -112,7 +113,9 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
                       <summary className="cursor-pointer text-sm font-medium text-slate-800">
                         Conversions comptées :{" "}
                         {account.conversionActionTypes.length ? (
-                          <code className="text-xs">{account.conversionActionTypes.join(", ")}</code>
+                          <span className="font-normal">
+                            {account.conversionActionTypes.map((type) => actionLabel(type).name).join(", ")}
+                          </span>
                         ) : (
                           <span className="text-amber-700">non configuré</span>
                         )}
@@ -126,7 +129,16 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
                           {types.map((t) => (
                             <label key={t.actionType} className="flex items-center gap-2 text-sm">
                               <input type="checkbox" name="actionTypes" value={t.actionType} defaultChecked={account.conversionActionTypes.includes(t.actionType)} />
-                              <code className="text-xs">{t.actionType}</code>
+                              <span>
+                                {actionLabel(t.actionType).known ? (
+                                  <>
+                                    {actionLabel(t.actionType).name}{" "}
+                                    <code className="text-xs text-slate-500">{t.actionType}</code>
+                                  </>
+                                ) : (
+                                  t.actionType
+                                )}
+                              </span>
                               <span className="text-xs text-slate-500">
                                 ({new Intl.NumberFormat("fr-FR").format(t.total)} sur l&apos;historique)
                               </span>
@@ -144,7 +156,7 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
               })}
             </ul>
           )}
-          <div className="border-t border-slate-100 p-5">
+          {accounts.length === 0 && <div className="border-t border-slate-100 p-5">
             <h3 className="mb-3 text-sm font-semibold text-slate-900">Ajouter un compte</h3>
             {connections.length === 0 ? (
               <Notice>
@@ -174,7 +186,7 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
                 ))}
               </div>
             )}
-          </div>
+          </div>}
         </Card>
 
         <Card>

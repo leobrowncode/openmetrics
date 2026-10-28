@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import { metricColumnHeader, presentMetric, type ConversionNaming } from "@/lib/conversion-actions";
+import { computeMetric, formatMetric, type MetricKey, type Sums } from "@/lib/metrics";
 import { CopyTableButton } from "./CopyTableButton";
 import { campaignTableMatrix, type CampaignTableRow } from "./table-clipboard";
 
@@ -11,12 +12,14 @@ export function CampaignTable({
   rows,
   totals,
   currency,
+  naming = null,
 }: {
   title?: string;
   metrics: MetricKey[];
   rows: CampaignTableRow[];
   totals: Sums;
   currency: string;
+  naming?: ConversionNaming | null;
 }) {
   const [sortKey, setSortKey] = useState<MetricKey>(metrics[0]);
   const [desc, setDesc] = useState(true);
@@ -34,7 +37,7 @@ export function CampaignTable({
     <div>
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         {title ? <h3 className="text-sm font-medium text-slate-700">{title}</h3> : <span />}
-        <CopyTableButton matrix={campaignTableMatrix(metrics, sorted, totals, currency)} />
+        <CopyTableButton matrix={campaignTableMatrix(metrics, sorted, totals, currency, naming)} />
       </div>
       <div className="overflow-x-auto">
         <table className="min-w-full text-sm">
@@ -46,10 +49,10 @@ export function CampaignTable({
                   <button
                     type="button"
                     className="hover:text-slate-900"
-                    title={getMetric(key).description}
+                    title={presentMetric(key, naming).description}
                     onClick={() => (key === sortKey ? setDesc(!desc) : (setSortKey(key), setDesc(true)))}
                   >
-                    {getMetric(key).shortLabel}
+                    {metricColumnHeader(key, naming)}
                     {key === sortKey ? (desc ? " ↓" : " ↑") : ""}
                   </button>
                 </th>

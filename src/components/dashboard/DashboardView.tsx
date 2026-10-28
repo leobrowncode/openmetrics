@@ -1,12 +1,14 @@
 "use client";
 
 import { useState, useTransition } from "react";
+import { conversionSectionTitle, conversionWidgetTitle } from "@/lib/conversion-actions";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
 import { formatDateFr } from "@/lib/periods";
 import { Notice, formatDateTime } from "../ui";
 import { CampaignTable } from "./CampaignTable";
 import { CampaignFilter, PeriodPicker } from "./Filters";
+import { GenerateBilan } from "./GenerateBilan";
 import { KpiCards } from "./KpiCards";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 
@@ -17,6 +19,8 @@ export function DashboardView({
   mode,
   title,
   subtitle,
+  dashboardId,
+  locked = false,
 }: {
   config: DashboardConfig;
   initial: DashboardPayload;
@@ -24,13 +28,17 @@ export function DashboardView({
   mode: "viewer" | "admin";
   title: string;
   subtitle?: string;
+  dashboardId?: string;
+  /** Bilan: period and campaigns stay those saved with the bilan. */
+  locked?: boolean;
 }) {
   const [payload, setPayload] = useState(initial);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const { data, query } = payload;
-  const canChangePeriod = mode === "admin" || config.viewer.allowPeriodChange;
-  const canFilter = mode === "admin" || config.viewer.allowCampaignFilter;
+  const canChangePeriod = !locked && (mode === "admin" || config.viewer.allowPeriodChange);
+  const canFilter = !locked && (mode === "admin" || config.viewer.allowCampaignFilter);
+  const selectedNames = data.campaigns.filter((c) => data.selectedCampaignIds.includes(c.id)).map((c) => c.name);
 
   function load(next: Partial<{ period: string; from: string; to: string; campaigns: string[] }>) {
     const params = new URLSearchParams();
@@ -63,16 +71,17 @@ export function DashboardView({
   const renderWidget = (widget: DashboardWidget) => {
     switch (widget.type) {
       case "kpi":
-        return <KpiCards metrics={widget.metrics} totals={data.totals} previousTotals={data.previousTotals} currency={data.currency} />;
+        return <KpiCards metrics={widget.metrics} totals={data.totals} previousTotals={data.previousTotals} currency={data.currency} naming={data.conversion.naming} />;
       case "timeseries":
         return (
           <TimeSeriesChart
-            title={widget.title}
+            title={conversionWidgetTitle(widget.title, widget.metrics, data.conversion.naming)}
             metrics={widget.metrics}
             series={data.series}
             range={data.range}
             currency={data.currency}
             chartStyle={widget.chartStyle}
+            naming={data.conversion.naming}
           />
         );
       case "campaign_table":
@@ -83,6 +92,7 @@ export function DashboardView({
             rows={data.byCampaign}
             totals={data.totals}
             currency={data.currency}
+            naming={data.conversion.naming}
           />
         );
     }
@@ -98,6 +108,16 @@ export function DashboardView({
             Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
             {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
           </p>
+          {data.conversion.technical && (
+            <p className="mt-1 text-sm text-slate-600">
+              Action Meta : <code className="text-xs">{data.conversion.technical}</code>
+            </p>
+          )}
+          {locked && (
+            <p className="mt-1 text-sm text-slate-600">
+              Campagnes : {selectedNames.length > 0 ? selectedNames.join(", ") : "aucune campagne de ce bilan dans le périmètre"}
+            </p>
+          )}
         </div>
         <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
           {canChangePeriod ? (
@@ -115,6 +135,9 @@ export function DashboardView({
           )}
           {canFilter && data.campaigns.length > 0 && (
             <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
+          )}
+          {mode === "admin" && dashboardId && !locked && (
+            <GenerateBilan dashboardId={dashboardId} campaignIds={query.campaignIds} campaigns={data.campaigns} range={query.range} />
           )}
         </div>
       </header>
@@ -135,7 +158,7 @@ export function DashboardView({
             <section key={section.id} aria-labelledby={`h-${section.id}`}>
               <h2 id={`h-${section.id}`} className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
                 <span className="h-5 w-1.5 rounded-full bg-brand-600" aria-hidden />
-                {section.title}
+                {conversionSectionTitle(section.title, data.conversion.naming)}
               </h2>
               <div className="space-y-4">
                 {section.widgets.map((widget) => (

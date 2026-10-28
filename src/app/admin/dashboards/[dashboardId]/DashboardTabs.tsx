@@ -10,6 +10,7 @@ export function DashboardTabs({ dashboardId }: { dashboardId: string }) {
   const tabs = [
     { href: base, label: "Aperçu" },
     { href: `${base}/edit`, label: "Configuration" },
+    { href: `${base}/bilans`, label: "Bilans" },
     { href: `${base}/share`, label: "Partage" },
   ];
   return (
@@ -20,7 +21,9 @@ export function DashboardTabs({ dashboardId }: { dashboardId: string }) {
           href={t.href}
           className={cx(
             "rounded-md px-3 py-1.5 text-sm font-medium",
-            pathname === t.href ? "bg-slate-900 text-white" : "text-slate-600 hover:bg-slate-100",
+            (t.href === base ? pathname === base : pathname === t.href || pathname.startsWith(`${t.href}/`))
+              ? "bg-slate-900 text-white"
+              : "text-slate-600 hover:bg-slate-100",
           )}
         >
           {t.label}
