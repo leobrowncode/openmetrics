@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { compareLabels } from "@/lib/account-search";
 import { PERIOD_LABELS, PERIOD_PRESETS, formatDateFr, type DateRange, type PeriodPreset } from "@/lib/periods";
-import { buttonClass, cx, inputClass } from "../ui";
+import { buttonClass, cx, inputClass, toolbarControlClass } from "../ui";
 
 export function PeriodPicker({
   period,
@@ -23,7 +24,7 @@ export function PeriodPicker({
     <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Période"
-        className={cx(inputClass, "w-auto py-1.5")}
+        className={toolbarControlClass}
         value={custom ? "custom" : period}
         disabled={disabled}
         onChange={(e) => {
@@ -50,15 +51,15 @@ export function PeriodPicker({
             onChange({ period: "custom", from, to });
           }}
         >
-          <input type="date" aria-label="Du" className={cx(inputClass, "w-auto py-1.5")} value={from} max={to} onChange={(e) => setFrom(e.target.value)} required />
+          <input type="date" aria-label="Du" className={toolbarControlClass} value={from} max={to} onChange={(e) => setFrom(e.target.value)} required />
           <span className="text-sm text-slate-500">au</span>
-          <input type="date" aria-label="Au" className={cx(inputClass, "w-auto py-1.5")} value={to} min={from} onChange={(e) => setTo(e.target.value)} required />
-          <button type="submit" className={buttonClass("secondary", "sm")}>
+          <input type="date" aria-label="Au" className={toolbarControlClass} value={to} min={from} onChange={(e) => setTo(e.target.value)} required />
+          <button type="submit" className={cx(buttonClass("secondary"), "h-10 py-0")}>
             Appliquer
           </button>
         </form>
       ) : (
-        <span className="text-sm text-slate-500 tabular">
+        <span className="text-sm whitespace-nowrap text-slate-500 tabular">
           {formatDateFr(range.from)} – {formatDateFr(range.to)}
         </span>
       )}
@@ -95,13 +96,15 @@ export function CampaignFilter({
       : selected.length === 1
         ? (campaigns.find((c) => c.id === selected[0])?.name ?? "1 campagne")
         : `${selected.length} campagnes`;
-  const visible = campaigns.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const visible = [...campaigns]
+    .sort((a, b) => compareLabels(a.name, b.name))
+    .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="relative" ref={ref}>
       <button
         type="button"
-        className={cx(buttonClass("secondary", "sm"), "max-w-72 py-2")}
+        className={cx(buttonClass("secondary"), "h-10 max-w-72 shrink-0 py-0")}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(!open)}

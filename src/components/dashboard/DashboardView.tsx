@@ -99,7 +99,7 @@ export function DashboardView({
             {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
+        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2" aria-busy={pending}>
           {canChangePeriod ? (
             <PeriodPicker
               key={`${query.period}:${query.range.from}:${query.range.to}`}
