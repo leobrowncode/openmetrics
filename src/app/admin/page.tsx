@@ -1,38 +1,33 @@
 import Link from "next/link";
-import { desc, eq, sql } from "drizzle-orm";
+import { desc, eq } from "drizzle-orm";
 import { isStale, SyncStatusBadge, ConnectionStatusBadge } from "@/components/admin/status";
 import { Card, CardHeader, Notice, PageHeader, formatDateTime } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { adAccounts, clients, dashboards, metaConnections, shareLinks, syncRuns } from "@/server/db/schema";
+import { overviewCounts } from "@/server/admin/counts";
+import { adAccounts, clients, metaConnections, syncRuns } from "@/server/db/schema";
 
 export default async function AdminHome() {
   await requireAdmin();
   const db = await getDb();
-  const [counts] = await db
-    .select({
-      clients: sql<number>`(select count(*)::int from ${clients})`,
-      accounts: sql<number>`(select count(*)::int from ${adAccounts} where ${adAccounts.isActive})`,
-      dashboards: sql<number>`(select count(*)::int from ${dashboards})`,
-      links: sql<number>`(select count(*)::int from ${shareLinks} where ${shareLinks.revokedAt} is null and (${shareLinks.expiresAt} is null or ${shareLinks.expiresAt} > now()))`,
-    })
-    .from(sql`(select 1) as one`);
-
-  const accounts = await db
-    .select({ account: adAccounts, clientName: clients.name })
-    .from(adAccounts)
-    .innerJoin(clients, eq(clients.id, adAccounts.clientId))
-    .where(eq(adAccounts.isActive, true))
-    .orderBy(clients.name);
+  const [counts, accounts, connections, recentRuns] = await Promise.all([
+    overviewCounts(db),
+    db
+      .select({ account: adAccounts, clientName: clients.name })
+      .from(adAccounts)
+      .innerJoin(clients, eq(clients.id, adAccounts.clientId))
+      .where(eq(adAccounts.isActive, true))
+      .orderBy(clients.name),
+    db.select().from(metaConnections).orderBy(metaConnections.label),
+    db
+      .select({ run: syncRuns, accountName: adAccounts.name })
+      .from(syncRuns)
+      .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
+      .orderBy(desc(syncRuns.startedAt))
+      .limit(8),
+  ]);
   const problems = accounts.filter((a) => a.account.lastSyncStatus === "error" || isStale(a.account.lastSyncedAt));
-  const connections = await db.select().from(metaConnections).orderBy(metaConnections.label);
   const brokenConnections = connections.filter((c) => c.status !== "active");
-  const recentRuns = await db
-    .select({ run: syncRuns, accountName: adAccounts.name })
-    .from(syncRuns)
-    .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
-    .orderBy(desc(syncRuns.startedAt))
-    .limit(8);
 
   const stats = [
     { label: "Clients", value: counts.clients, href: "/admin/clients" },

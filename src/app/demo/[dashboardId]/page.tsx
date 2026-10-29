@@ -50,6 +50,7 @@ export default async function PublicDemoDashboardPage(props: PageProps<"/demo/[d
         mode="viewer"
         title={demo.dashboard.name}
         subtitle={demo.clientName}
+        dashboardId={demo.dashboard.id}
       />
     </main>
   );

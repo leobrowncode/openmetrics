@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { NewClientForm } from "@/components/admin/NewClientForm";
 import { Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
@@ -10,12 +11,12 @@ import { listAvailableAdAccounts } from "@/server/meta/available-accounts";
 export default async function ClientsPage() {
   await requireAdmin();
   const db = await getDb();
-  const [accountCounts, dashboardCounts, available] = await Promise.all([
+  const [accountCounts, dashboardCounts, clientRows] = await Promise.all([
     accountCountsByClient(db),
     dashboardCountsByClient(db),
-    listAvailableAdAccounts(db),
+    db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name),
   ]);
-  const rows = (await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name)).map((c) => ({
+  const rows = clientRows.map((c) => ({
     ...c,
     accounts: accountCounts.get(c.id) ?? 0,
     dashboards: dashboardCounts.get(c.id) ?? 0,
@@ -45,13 +46,22 @@ export default async function ClientsPage() {
             </Card>
           )}
         </div>
-        <Card className="order-1 lg:order-2 lg:col-span-2">
-          <CardHeader title="Nouveau client" description="Les comptes publicitaires déjà accessibles via Meta." />
-          <div className="p-5">
-            <NewClientForm accounts={available.accounts} errors={available.errors} connectionCount={available.connectionCount} />
-          </div>
-        </Card>
+        <Suspense fallback={<Card className="order-1 lg:order-2 lg:col-span-2"><CardHeader title="Nouveau client" description="Recherche des comptes Meta…" /></Card>}>
+          <NewClientCard />
+        </Suspense>
       </div>
     </>
+  );
+}
+
+async function NewClientCard() {
+  const available = await listAvailableAdAccounts(await getDb());
+  return (
+    <Card className="order-1 lg:order-2 lg:col-span-2">
+      <CardHeader title="Nouveau client" description="Les comptes publicitaires déjà accessibles via Meta." />
+      <div className="p-5">
+        <NewClientForm accounts={available.accounts} errors={available.errors} connectionCount={available.connectionCount} />
+      </div>
+    </Card>
   );
 }

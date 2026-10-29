@@ -50,6 +50,7 @@ export default async function ViewerPage(props: PageProps<"/share/[linkId]">) {
         mode="viewer"
         title={share.dashboard.name}
         subtitle={client?.name}
+        dashboardId={share.dashboard.id}
       />
     </main>
   );
