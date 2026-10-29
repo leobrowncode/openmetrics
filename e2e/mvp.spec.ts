@@ -34,6 +34,54 @@ async function viewerPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
+test("admin sorts dashboards by clicking the column titles", async ({ page }) => {
+  await login(page);
+  await page.goto("/admin/dashboards");
+  const names = page.locator("tbody tr td:first-child a");
+  const header = (label: string) => page.getByRole("columnheader", { name: label, exact: true });
+
+  await expect(page.getByText("Trier par")).toHaveCount(0);
+  await expect(header("Dashboard")).toBeVisible();
+  await expect(header("Client")).toHaveAttribute("aria-sort", "ascending");
+  await expect(header("Liens")).toBeVisible();
+  await expect(header("Modifié le")).toBeVisible();
+  await expect(names).toHaveText(["Association Horizon - Reporting Meta Ads", "Maison Lumen - Reporting Meta Ads"]);
+
+  await header("Client").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=client&dir=desc/);
+  await expect(header("Client")).toHaveAttribute("aria-sort", "descending");
+  await expect(names).toHaveText(["Maison Lumen - Reporting Meta Ads", "Association Horizon - Reporting Meta Ads"]);
+
+  await header("Dashboard").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=name&dir=asc/);
+  await expect(header("Dashboard")).toHaveAttribute("aria-sort", "ascending");
+  await expect(names).toHaveText(["Association Horizon - Reporting Meta Ads", "Maison Lumen - Reporting Meta Ads"]);
+  await header("Dashboard").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=name&dir=desc/);
+  await expect(names.nth(0)).toHaveText("Maison Lumen - Reporting Meta Ads");
+
+  await header("Modifié le").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=updated&dir=desc/);
+  const newestFirst = await names.allInnerTexts();
+  await header("Modifié le").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=updated&dir=asc/);
+  await expect(header("Modifié le")).toHaveAttribute("aria-sort", "ascending");
+  await expect(names).toHaveText([...newestFirst].reverse());
+
+  await header("Liens").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=links&dir=desc/);
+  await expect(header("Liens")).toHaveAttribute("aria-sort", "descending");
+  await header("Liens").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=links&dir=asc/);
+  await expect(header("Liens")).toHaveAttribute("aria-sort", "ascending");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await header("Modifié le").getByRole("link").click();
+  await expect(page).toHaveURL(/sort=updated&dir=desc/);
+  await names.first().click();
+  await expect(page.getByTestId("kpi-spend")).toBeVisible();
+});
+
 test("admin area requires authentication", async ({ page }) => {
   await page.goto("/admin/clients");
   await expect(page).toHaveURL(/\/login$/);
