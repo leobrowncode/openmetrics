@@ -81,10 +81,14 @@ export function ChartColorEditor({
 
   const panel = (
     <div className="space-y-3">
-      {variant === "popover" && <p className="text-sm font-semibold text-slate-900">Couleurs des courbes</p>}
-      <p className="text-xs text-slate-500">
-        Propres à ce dashboard. La courbe 1 colore la première série de chaque graphique, la courbe 2 la suivante.
-      </p>
+      {variant === "popover" && (
+        <>
+          <p className="text-sm font-semibold text-slate-900">Couleurs des courbes</p>
+          <p className="text-xs text-slate-500">
+            Propres à ce dashboard. La courbe 1 colore la première série de chaque graphique, la courbe 2 la suivante.
+          </p>
+        </>
+      )}
       <div role="radiogroup" aria-label="Courbe à colorer" className="flex flex-wrap gap-2">
         {CHART_SERIES_LABELS.map((label, index) => (
           <button
