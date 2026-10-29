@@ -29,7 +29,7 @@ export function KpiCards({
             {previousTotals && (
               <p className="mt-1 text-xs text-slate-500">
                 {delta === null ? (
-                  <span>— vs période précédente</span>
+                  <span>-</span>
                 ) : (
                   <>
                     <span className={cx("font-semibold", good === true && "text-emerald-600", good === false && "text-red-600")}>

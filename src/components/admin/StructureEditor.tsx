@@ -2,6 +2,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { Button, Card, Field, inputClass } from "@/components/ui";
 import { CHART_STYLES, WIDGET_TYPE_LABELS, WIDGET_TYPES, type DashboardSection } from "@/lib/dashboard-config";
 import { METRIC_KEYS, getMetric } from "@/lib/metrics";
+import { plainDashes } from "@/lib/text";
 import type { ActionState } from "@/app/admin/actions/context";
 
 const CHART_STYLE_LABELS = { line: "Courbe", bar: "Barres", area: "Aire" } as const;
@@ -34,7 +35,7 @@ export function StructureEditor({
             <form action={actions.renameSection} className="flex flex-1 gap-2">
               <Hidden values={hidden} />
               <input type="hidden" name="sectionId" value={section.id} />
-              <input name="title" defaultValue={section.title} className={`${inputClass} font-semibold`} aria-label="Titre de section" />
+              <input name="title" defaultValue={plainDashes(section.title)} className={`${inputClass} font-semibold`} aria-label="Titre de section" />
               <Button variant="secondary" size="sm">
                 Renommer
               </Button>
@@ -70,7 +71,7 @@ export function StructureEditor({
                 <div>
                   <p className="font-medium text-slate-900">
                     {WIDGET_TYPE_LABELS[widget.type]}
-                    {widget.title ? ` — ${widget.title}` : ""}
+                    {widget.title ? ` - ${plainDashes(widget.title)}` : ""}
                     {widget.chartStyle ? ` (${CHART_STYLE_LABELS[widget.chartStyle]})` : ""}
                   </p>
                   <p className="text-xs text-slate-500">{widget.metrics.map((metric) => getMetric(metric).label).join(" · ")}</p>

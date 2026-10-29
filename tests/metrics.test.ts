@@ -47,7 +47,7 @@ describe("KPI aggregation", () => {
     expect(formatMetric("spend", 12.5, "USD")).toMatch(/12,50\s?\$US|12,50\s?\$/);
     expect(formatMetric("linkCtr", 1.23456, "EUR")).toBe("1,23 %");
     expect(formatMetric("roas", 6.861, "EUR")).toBe("6,86");
-    expect(formatMetric("cpa", null, "EUR")).toBe("—");
+    expect(formatMetric("cpa", null, "EUR")).toBe("-");
   });
 
   it("computes relative deltas only when meaningful", () => {

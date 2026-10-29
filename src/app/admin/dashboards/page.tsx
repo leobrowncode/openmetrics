@@ -4,6 +4,7 @@ import { Card, EmptyState, PageHeader, formatDateTime } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { activeLinkCountsByDashboard } from "@/server/admin/counts";
+import { plainDashes } from "@/lib/text";
 import { clients, dashboards } from "@/server/db/schema";
 
 export default async function DashboardsPage() {
@@ -49,10 +50,10 @@ export default async function DashboardsPage() {
                 <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
                   <td className="px-5 py-3">
                     <Link href={`/admin/dashboards/${d.id}`} className="font-medium text-brand-700 hover:underline">
-                      {d.name}
+                      {plainDashes(d.name)}
                     </Link>
                   </td>
-                  <td className="px-5 py-3 text-slate-700">{d.clientName}</td>
+                  <td className="px-5 py-3 text-slate-700">{plainDashes(d.clientName)}</td>
                   <td className="px-5 py-3 tabular">{activeLinks.get(d.id) ?? 0}</td>
                   <td className="px-5 py-3 text-slate-500">{formatDateTime(d.updatedAt)}</td>
                 </tr>

@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useRef, useState, type KeyboardEvent } from "react";
 import { filterAccountsByQuery, type AccountMatchMode } from "@/lib/account-search";
+import { plainDashes } from "@/lib/text";
 import { cx, inputClass } from "../ui";
 
 export interface AdAccountOption {
@@ -158,10 +159,10 @@ export function AdAccountPicker({
                   aria-hidden
                 />
                 <span className="min-w-0">
-                  <span className="block truncate text-sm text-slate-900">{account.name}</span>
+                  <span className="block truncate text-sm text-slate-900">{plainDashes(account.name)}</span>
                   <span className="block truncate text-xs text-slate-500">
                     {account.metaAccountId} · {account.currency}
-                    {showConnection ? ` · ${account.connectionLabel}` : ""}
+                    {showConnection ? ` · ${plainDashes(account.connectionLabel)}` : ""}
                   </span>
                 </span>
               </div>
@@ -173,7 +174,7 @@ export function AdAccountPicker({
       {selected && (
         <div className="flex items-center justify-between gap-2 text-xs text-slate-600">
           <p>
-            Sélection : <span className="font-medium text-slate-800">{selected.name}</span>
+            Sélection : <span className="font-medium text-slate-800">{plainDashes(selected.name)}</span>
           </p>
           <button type="button" className="text-slate-500 underline-offset-2 hover:underline" onClick={() => choose(null)}>
             Effacer la sélection

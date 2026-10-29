@@ -2,6 +2,7 @@ import Link from "next/link";
 import { desc, eq } from "drizzle-orm";
 import { isStale, SyncStatusBadge, ConnectionStatusBadge } from "@/components/admin/status";
 import { Card, CardHeader, Notice, PageHeader, formatDateTime } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { overviewCounts } from "@/server/admin/counts";
@@ -68,9 +69,9 @@ export default async function AdminHome() {
             {accounts.map(({ account, clientName }) => (
               <li key={account.id} className="flex items-center justify-between gap-3 px-5 py-3 text-sm">
                 <div className="min-w-0">
-                  <p className="truncate font-medium text-slate-900">{account.name}</p>
+                  <p className="truncate font-medium text-slate-900">{plainDashes(account.name)}</p>
                   <p className="text-xs text-slate-500">
-                    {clientName} · dernière actualisation {formatDateTime(account.lastSyncedAt)}
+                    {plainDashes(clientName)} · dernière actualisation {formatDateTime(account.lastSyncedAt)}
                   </p>
                 </div>
                 <SyncStatusBadge status={account.lastSyncStatus} />

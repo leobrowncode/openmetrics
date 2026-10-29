@@ -4,6 +4,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { Badge, Button, Card, CardHeader, Field, PageHeader, formatDateTime, inputClass } from "@/components/ui";
 import { parseDashboardConfig } from "@/lib/dashboard-config";
 import { getMetric } from "@/lib/metrics";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { dashboardTemplates } from "@/server/db/schema";
@@ -18,7 +19,7 @@ export default async function TemplatesPage() {
     <>
       <PageHeader
         title="Modèles de dashboards"
-        description="Un modèle contient uniquement la structure (sections, widgets, période, options) — jamais de données client. Créez-en un ici, ou enregistrez la configuration d'un dashboard existant."
+        description="Un modèle contient uniquement la structure (sections, widgets, période, options) - jamais de données client. Créez-en un ici, ou enregistrez la configuration d'un dashboard existant."
       />
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="grid gap-4 md:grid-cols-2 lg:col-span-2">
@@ -29,7 +30,7 @@ export default async function TemplatesPage() {
               <div className="flex items-start justify-between gap-3">
                 <div>
                   <p className="font-semibold text-slate-900">
-                    {t.name} {t.builtIn && <Badge tone="blue">Intégré</Badge>}
+                    {plainDashes(t.name)} {t.builtIn && <Badge tone="blue">Intégré</Badge>}
                   </p>
                   {t.description && <p className="mt-1 text-sm text-slate-500">{t.description}</p>}
                   <p className="mt-1 text-xs text-slate-400">Créé le {formatDateTime(t.createdAt)}</p>
@@ -55,7 +56,7 @@ export default async function TemplatesPage() {
                       {i + 1}. {s.title}
                     </span>{" "}
                     <span className="text-xs text-slate-500">
-                      — {[...new Set(s.widgets.flatMap((w) => w.metrics))].map((m) => getMetric(m).shortLabel).join(", ")}
+                      - {[...new Set(s.widgets.flatMap((w) => w.metrics))].map((m) => getMetric(m).shortLabel).join(", ")}
                     </span>
                   </li>
                 ))}

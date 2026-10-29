@@ -6,6 +6,7 @@ import { AdAccountPicker } from "@/components/admin/AdAccountPicker";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { SyncStatusBadge } from "@/components/admin/status";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Notice, PageHeader, formatDateTime, inputClass } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { adAccounts, clients, dashboards, dashboardTemplates } from "@/server/db/schema";
@@ -39,12 +40,12 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
   return (
     <>
       <PageHeader
-        title={client.name}
+        title={plainDashes(client.name)}
         description="Comptes publicitaires, paramétrage des conversions et dashboards de ce client."
         actions={
           <form action={renameClientAction} className="flex gap-2">
             <input type="hidden" name="clientId" value={client.id} />
-            <input name="name" defaultValue={client.name} className={inputClass} aria-label="Nom du client" />
+            <input name="name" defaultValue={plainDashes(client.name)} className={inputClass} aria-label="Nom du client" />
             <Button variant="secondary" type="submit">
               Renommer
             </Button>
@@ -68,7 +69,7 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-medium text-slate-900">
-                          {account.name} {!account.isActive && <Badge>Désactivé</Badge>}
+                          {plainDashes(account.name)} {!account.isActive && <Badge>Désactivé</Badge>}
                         </p>
                         <p className="text-xs text-slate-500">
                           {account.metaAccountId} · {account.currency} · {account.timezoneName} · dernière actualisation {formatDateTime(account.lastSyncedAt)}
@@ -146,7 +147,7 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
               {clientDashboards.map((d) => (
                 <li key={d.id}>
                   <Link href={`/admin/dashboards/${d.id}`} className="block rounded-lg border border-slate-200 px-4 py-3 hover:border-brand-500">
-                    <p className="font-medium text-slate-900">{d.name}</p>
+                    <p className="font-medium text-slate-900">{plainDashes(d.name)}</p>
                     <p className="text-xs text-slate-500">Modifié le {formatDateTime(d.updatedAt)}</p>
                   </Link>
                 </li>
@@ -155,13 +156,13 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
             </ul>
             <ActionForm action={createDashboardAction} hidden={{ clientId: client.id }} submitLabel="Créer le dashboard">
               <Field label="Nom">
-                <input name="name" required className={inputClass} defaultValue={`${client.name} — Reporting Meta Ads`} />
+                <input name="name" required className={inputClass} defaultValue={`${plainDashes(client.name)} - Reporting Meta Ads`} />
               </Field>
               <Field label="Modèle">
                 <select name="templateId" className={inputClass}>
                   {templates.map((t) => (
                     <option key={t.id} value={t.id}>
-                      {t.name}
+                      {plainDashes(t.name)}
                     </option>
                   ))}
                 </select>

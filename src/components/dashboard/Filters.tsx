@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { compareLabels } from "@/lib/account-search";
 import { PERIOD_LABELS, PERIOD_PRESETS, formatDateFr, type DateRange, type PeriodPreset } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import { buttonClass, cx, inputClass, toolbarControlClass } from "../ui";
 
 export function PeriodPicker({
@@ -21,7 +22,7 @@ export function PeriodPicker({
   const [to, setTo] = useState(range.to);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={cx("flex items-center gap-2", custom && "flex-wrap")}>
       <select
         aria-label="Période"
         className={toolbarControlClass}
@@ -59,8 +60,8 @@ export function PeriodPicker({
           </button>
         </form>
       ) : (
-        <span className="text-sm whitespace-nowrap text-slate-500 tabular">
-          {formatDateFr(range.from)} – {formatDateFr(range.to)}
+        <span className="inline-flex h-10 items-center whitespace-nowrap text-sm text-slate-500 tabular">
+          {formatDateFr(range.from)} - {formatDateFr(range.to)}
         </span>
       )}
     </div>
@@ -94,11 +95,11 @@ export function CampaignFilter({
     selected.length === 0
       ? "Toutes les campagnes"
       : selected.length === 1
-        ? (campaigns.find((c) => c.id === selected[0])?.name ?? "1 campagne")
+        ? (plainDashes(campaigns.find((c) => c.id === selected[0])?.name ?? "") || "1 campagne")
         : `${selected.length} campagnes`;
   const visible = [...campaigns]
     .sort((a, b) => compareLabels(a.name, b.name))
-    .filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+    .filter((c) => plainDashes(c.name).toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="relative" ref={ref}>
@@ -129,7 +130,7 @@ export function CampaignFilter({
                   checked={draft.includes(c.id)}
                   onChange={(e) => setDraft(e.target.checked ? [...draft, c.id] : draft.filter((id) => id !== c.id))}
                 />
-                <span className="text-slate-800">{c.name}</span>
+                <span className="text-slate-800">{plainDashes(c.name)}</span>
               </label>
             ))}
             {visible.length === 0 && <p className="px-2 py-1.5 text-sm text-slate-500">Aucune campagne.</p>}

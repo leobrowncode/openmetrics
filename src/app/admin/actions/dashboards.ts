@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { chartColorsSchema } from "@/lib/chart-colors";
 import {
   CHART_STYLES,
   WIDGET_TYPES,
@@ -116,8 +117,38 @@ export async function updateDashboardSettingsAction(_prev: ActionState | null, f
     .set({ name, adAccountIds: accountIds, config: dashboardConfigSchema.parse(config), updatedAt: new Date() })
     .where(eq(dashboards.id, id));
   await log("dashboard.update_settings", "dashboard", id);
-  revalidatePath(`/admin/dashboards/${id}`);
+  revalidatePath(`/admin/dashboards/${id}`, "layout");
+  revalidatePath("/admin/dashboards");
+  revalidatePath(`/admin/clients/${dashboard.clientId}`);
   return { ok: true, message: "Paramètres enregistrés." };
+}
+
+export async function renameDashboardAction(dashboardId: string, name: string): Promise<ActionState> {
+  const trimmed = name.trim();
+  if (trimmed.length < 2 || trimmed.length > 120) return { error: "Le nom doit contenir entre 2 et 120 caractères." };
+  const { db, log } = await adminContext();
+  const dashboard = await loadDashboard(db, dashboardId);
+  if (dashboard.name !== trimmed) {
+    await db.update(dashboards).set({ name: trimmed, updatedAt: new Date() }).where(eq(dashboards.id, dashboard.id));
+    await log("dashboard.rename", "dashboard", dashboard.id);
+  }
+  revalidatePath(`/admin/dashboards/${dashboard.id}`, "layout");
+  revalidatePath("/admin/dashboards");
+  revalidatePath(`/admin/clients/${dashboard.clientId}`);
+  return { ok: true };
+}
+
+export async function updateChartColorsAction(dashboardId: string, colors: string[]): Promise<ActionState> {
+  const parsed = chartColorsSchema.safeParse(colors);
+  if (!parsed.success) return { error: "Choisissez une couleur de la palette." };
+  const { db, log } = await adminContext();
+  const dashboard = await loadDashboard(db, dashboardId);
+  const config = parseDashboardConfig(dashboard.config);
+  if (config.chartColors[0] === parsed.data[0] && config.chartColors[1] === parsed.data[1]) return { ok: true };
+  config.chartColors = parsed.data;
+  await saveConfig(db, dashboard.id, config);
+  await log("dashboard.update_colors", "dashboard", dashboard.id);
+  return { ok: true };
 }
 
 export async function addSectionAction(formData: FormData): Promise<void> {

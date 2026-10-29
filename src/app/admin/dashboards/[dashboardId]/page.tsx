@@ -5,6 +5,7 @@ import { Notice } from "@/components/ui";
 import { parseDashboardConfig } from "@/lib/dashboard-config";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
+import { plainDashes } from "@/lib/text";
 import { clients, dashboards } from "@/server/db/schema";
 import { loadDashboardPayload } from "@/server/dashboards/query";
 
@@ -31,9 +32,9 @@ export default async function DashboardPreviewPage(props: PageProps<"/admin/dash
         initial={payload}
         dataUrl={`/admin/dashboards/${dashboard.id}/data`}
         mode="admin"
-        title={dashboard.name}
-        subtitle={client?.name}
         dashboardId={dashboard.id}
+        title={plainDashes(dashboard.name)}
+        subtitle={client?.name ? plainDashes(client.name) : undefined}
       />
     </div>
   );

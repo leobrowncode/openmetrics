@@ -2,8 +2,10 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { StructureEditor } from "@/components/admin/StructureEditor";
+import { ChartColorEditor } from "@/components/dashboard/ChartColorEditor";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
 import { parseDashboardConfig } from "@/lib/dashboard-config";
+import { plainDashes } from "@/lib/text";
 import { PERIOD_LABELS, PERIOD_PRESETS } from "@/lib/periods";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
@@ -53,11 +55,17 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
 
       <div className="space-y-6">
         <Card>
+          <CardHeader title="Couleurs des courbes" description="Enregistrées pour ce dashboard uniquement." />
+          <div className="p-5">
+            <ChartColorEditor dashboardId={dashboard.id} initialColors={config.chartColors} variant="panel" />
+          </div>
+        </Card>
+        <Card>
           <CardHeader title="Paramètres" />
           <div className="p-5">
             <ActionForm action={updateDashboardSettingsAction} hidden={hidden} submitLabel="Enregistrer">
               <Field label="Nom">
-                <input name="name" defaultValue={dashboard.name} className={inputClass} required />
+                <input name="name" defaultValue={plainDashes(dashboard.name)} className={inputClass} required />
               </Field>
               <Field label="Période par défaut">
                 <select name="defaultPeriod" defaultValue={config.defaultPeriod} className={inputClass}>
@@ -73,7 +81,7 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
                 {accounts.map((a) => (
                   <label key={a.id} className="flex items-center gap-2 text-sm">
                     <input type="checkbox" name="adAccountIds" value={a.id} defaultChecked={dashboard.adAccountIds.includes(a.id)} />
-                    {a.name} <span className="text-xs text-slate-500">({a.currency})</span>
+                    {plainDashes(a.name)} <span className="text-xs text-slate-500">({a.currency})</span>
                   </label>
                 ))}
                 <p className="text-xs text-slate-500">Aucune case cochée = tous les comptes du client.</p>
@@ -106,13 +114,13 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
                 <select name="targetClientId" defaultValue={dashboard.clientId} className={inputClass}>
                   {allClients.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {plainDashes(c.name)}
                     </option>
                   ))}
                 </select>
               </Field>
               <Field label="Nom de la copie">
-                <input name="name" className={inputClass} placeholder={`${dashboard.name} (copie)`} />
+                <input name="name" className={inputClass} placeholder={`${plainDashes(dashboard.name)} (copie)`} />
               </Field>
             </ActionForm>
           </div>

@@ -4,6 +4,7 @@ import { useState, useSyncExternalStore, useTransition } from "react";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
 import { formatDateFr } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import {
   applyViewerLayout,
   clearViewerLayout,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/viewer-layout";
 import { Button, Notice, formatDateTime } from "../ui";
 import { CampaignTable } from "./CampaignTable";
+import { ChartColorEditor } from "./ChartColorEditor";
 import { CustomizePanel } from "./CustomizePanel";
 import { CampaignFilter, PeriodPicker } from "./Filters";
 import { KpiCards } from "./KpiCards";
@@ -25,23 +27,27 @@ export function DashboardView({
   initial,
   dataUrl,
   mode,
+  dashboardId,
   title,
   subtitle,
-  dashboardId,
 }: {
   config: DashboardConfig;
   initial: DashboardPayload;
   dataUrl: string;
   mode: "viewer" | "admin";
+  dashboardId: string;
   title: string;
   subtitle?: string;
-  dashboardId: string;
 }) {
   const [payload, setPayload] = useState(initial);
+  const [chartColors, setChartColors] = useState<string[]>(() => [...config.chartColors]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const [customizing, setCustomizing] = useState(false);
   const storedLayout = useSyncExternalStore(subscribeViewerLayouts, () => readViewerLayoutSnapshot(dashboardId), () => null);
+  const showIdentity = mode !== "admin";
+  const pageTitle = plainDashes(title);
+  const pageSubtitle = subtitle ? plainDashes(subtitle) : undefined;
   const { data, query } = payload;
   const canChangePeriod = mode === "admin" || config.viewer.allowPeriodChange;
   const canFilter = mode === "admin" || config.viewer.allowCampaignFilter;
@@ -89,18 +95,19 @@ export function DashboardView({
       case "timeseries":
         return (
           <TimeSeriesChart
-            title={widget.title}
+            title={widget.title ? plainDashes(widget.title) : undefined}
             metrics={widget.metrics}
             series={data.series}
             range={data.range}
             currency={data.currency}
             chartStyle={widget.chartStyle}
+            colors={chartColors}
           />
         );
       case "campaign_table":
         return (
           <CampaignTable
-            title={widget.title}
+            title={widget.title ? plainDashes(widget.title) : undefined}
             metrics={widget.metrics}
             rows={data.byCampaign}
             totals={data.totals}
@@ -112,37 +119,51 @@ export function DashboardView({
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          {subtitle && <p className="text-sm font-medium text-brand-600">{subtitle}</p>}
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">
-            Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
-            {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
-          </p>
-        </div>
-        <div className="ml-auto flex max-w-full flex-wrap items-center gap-2" aria-busy={pending}>
-          {canChangePeriod ? (
-            <PeriodPicker
-              key={`${query.period}:${query.range.from}:${query.range.to}`}
-              period={query.period}
-              range={query.range}
-              disabled={pending}
-              onChange={(next) => load(next.period === "custom" ? next : { period: next.period })}
-            />
-          ) : (
-            <span className="text-sm text-slate-600 tabular">
-              {formatDateFr(query.range.from)} – {formatDateFr(query.range.to)}
-            </span>
-          )}
-          {canFilter && data.campaigns.length > 0 && (
-            <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
-          )}
-          {canCustomize && (
-            <Button type="button" variant="secondary" size="sm" aria-expanded={customizing} onClick={() => setCustomizing((open) => !open)}>
-              Personnaliser
-            </Button>
-          )}
+      <header className="flex flex-col gap-3">
+        {showIdentity && (
+          <div>
+            {pageSubtitle && <p className="text-sm font-medium text-brand-600">{pageSubtitle}</p>}
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{pageTitle}</h1>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm text-slate-500">
+              Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
+              {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
+            </p>
+            {data.previousRange && (
+              <p className="text-xs text-slate-500">
+                vs {formatDateFr(data.previousRange.from)} - {formatDateFr(data.previousRange.to)}
+              </p>
+            )}
+          </div>
+          <div className="relative flex flex-wrap items-center gap-2" aria-busy={pending}>
+            {canChangePeriod ? (
+              <PeriodPicker
+                key={`${query.period}:${query.range.from}:${query.range.to}`}
+                period={query.period}
+                range={query.range}
+                disabled={pending}
+                onChange={(next) => load(next.period === "custom" ? next : { period: next.period })}
+              />
+            ) : (
+              <span className="inline-flex h-10 items-center whitespace-nowrap text-sm text-slate-600 tabular">
+                {formatDateFr(query.range.from)} - {formatDateFr(query.range.to)}
+              </span>
+            )}
+            {canFilter && data.campaigns.length > 0 && (
+              <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
+            )}
+            {mode === "admin" && (
+              <ChartColorEditor dashboardId={dashboardId} initialColors={config.chartColors} onColorsChange={setChartColors} />
+            )}
+            {canCustomize && (
+              <Button type="button" variant="secondary" size="sm" aria-expanded={customizing} onClick={() => setCustomizing((open) => !open)}>
+                Personnaliser
+              </Button>
+            )}
+          </div>
         </div>
       </header>
 
@@ -161,19 +182,14 @@ export function DashboardView({
       {data.warnings.map((w) => (
         <Notice key={w}>{w}</Notice>
       ))}
-      {data.previousRange && (
-        <p className="text-xs text-slate-500">
-          Comparaison avec la période précédente : {formatDateFr(data.previousRange.from)} – {formatDateFr(data.previousRange.to)}
-        </p>
-      )}
 
       <div className={pending ? "opacity-60 transition-opacity" : "transition-opacity"}>
         <div className="space-y-8">
           {shown.sections.map((section) => (
             <section key={section.id} aria-labelledby={`h-${section.id}`}>
               <h2 id={`h-${section.id}`} className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
-                <span className="h-5 w-1.5 rounded-full bg-brand-600" aria-hidden />
-                {section.title}
+                <span className="h-5 w-1.5 rounded-full" style={{ backgroundColor: chartColors[0] }} aria-hidden />
+                {plainDashes(section.title)}
               </h2>
               <div className="space-y-4">
                 {section.widgets.map((widget) => (

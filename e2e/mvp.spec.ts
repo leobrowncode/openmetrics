@@ -13,7 +13,7 @@ async function login(page: Page) {
 
 async function openDashboard(page: Page, client: string) {
   await page.goto("/admin/dashboards");
-  await page.getByRole("link", { name: `${client} — Reporting Meta Ads` }).click();
+  await page.getByRole("link", { name: `${client} - Reporting Meta Ads` }).click();
   await expect(page.getByTestId("kpi-spend")).toBeVisible();
 }
 
@@ -44,6 +44,10 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await login(page);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/01-admin-overview.png`, fullPage: true });
   await openDashboard(page, "Association Horizon");
+  const dashboardName = "Association Horizon - Reporting Meta Ads";
+  await expect(page.getByRole("heading", { name: dashboardName, exact: true })).toHaveCount(1);
+  await expect(page.locator("p").filter({ hasText: new RegExp(`^${dashboardName}$`) })).toHaveCount(0);
+  await expect(page.getByText("Association Horizon", { exact: true })).toHaveCount(1);
 
   for (const title of ["Investissements", "Impressions et clics", "CTR et CPC", "Conversions"]) {
     await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
@@ -89,7 +93,7 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
 test("private link: viewer access, filters, isolation and revocation", async ({ page, browser }) => {
   await login(page);
   await openDashboard(page, "Association Horizon");
-  const url = await createShareLink(page, "E2E — Direction client");
+  const url = await createShareLink(page, "E2E - Direction client");
   expect(url).toMatch(/\/share#t=[A-Za-z0-9_-]{43}$/);
   const token = url.split("#t=")[1];
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/03-admin-share-link.png`, fullPage: true });
@@ -99,7 +103,9 @@ test("private link: viewer access, filters, isolation and revocation", async ({ 
   viewer.on("request", (r) => requests.push(r.url()));
   await viewer.goto(url.replace(/^https?:\/\/[^/]+/, ""));
   await expect(viewer).toHaveURL(/\/share\/[0-9a-f-]{36}$/);
-  await expect(viewer.getByRole("heading", { name: "Association Horizon — Reporting Meta Ads" })).toBeVisible();
+  await expect(viewer.getByRole("heading", { name: "Association Horizon - Reporting Meta Ads" })).toBeVisible();
+  await expect(viewer.getByText("Association Horizon", { exact: true })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "Couleurs" })).toHaveCount(0);
   await expect(viewer.getByText("Consultation en lecture seule.", { exact: false })).toBeVisible();
   expect(requests.every((r) => !r.includes(token))).toBe(true);
   expect(viewer.url()).not.toContain(token);
@@ -119,9 +125,9 @@ test("private link: viewer access, filters, isolation and revocation", async ({ 
   await expect(viewer.getByTestId("kpi-spend").first()).not.toHaveText(before);
 
   await viewer.getByRole("button", { name: "Toutes les campagnes" }).click();
-  await viewer.getByLabel("FDA — Broad — Dons").check();
+  await viewer.getByLabel("FDA - Broad - Dons").check();
   await viewer.getByRole("button", { name: "Appliquer" }).click();
-  await expect(viewer.getByRole("button", { name: "FDA — Broad — Dons" })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "FDA - Broad - Dons" })).toBeVisible();
   await expect(viewer.locator("tbody tr")).toHaveCount(1);
   if (SHOTS) await viewer.screenshot({ path: `${SHOTS}/04-viewer-dashboard.png`, fullPage: true });
 
@@ -174,6 +180,57 @@ test("admin can configure conversions, widgets and monitor syncs", async ({ page
   await page.getByRole("checkbox", { name: "CPM (coût pour 1 000 impressions)" }).first().check();
   await page.getByRole("combobox", { name: "Type" }).first().selectOption("timeseries");
   await page.getByRole("button", { name: "Ajouter", exact: true }).first().click();
-  await expect(page.getByText("Graphique temporel — CPM quotidien")).toBeVisible();
+  await expect(page.getByText("Graphique temporel - CPM quotidien")).toBeVisible();
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/07-admin-editor.png`, fullPage: true });
+});
+
+test("admin renames a dashboard from its title and picks chart colors", async ({ page }) => {
+  await login(page);
+  await openDashboard(page, "Association Horizon");
+  const original = "Association Horizon - Reporting Meta Ads";
+  const renamed = "Horizon - Rapport";
+  const dashboardUrl = "/admin/dashboards/10000000-0000-4000-8000-000000000031";
+
+  try {
+    await page.getByRole("button", { name: "Couleurs" }).click();
+    await page.getByRole("radio", { name: "Courbe 1" }).click();
+    await page.getByRole("button", { name: "Vert, nuance 4" }).click();
+    await expect(page.getByText("Couleurs enregistrées pour ce dashboard.")).toBeVisible();
+    const spend = page.locator("div.rounded-xl.border").filter({
+      has: page.getByRole("heading", { name: "Évolution du montant dépensé", exact: true }),
+    });
+    await expect(spend.locator('[fill="#10b981"]').first()).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator('[fill="#10b981"]').first()).toBeVisible();
+
+    await page.getByRole("button", { name: original }).click();
+    await page.getByLabel("Nom du dashboard").fill(renamed);
+    await page.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(page.getByRole("heading", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: original, exact: true })).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.locator('[fill="#10b981"]').first()).toBeVisible();
+
+    await page.getByRole("link", { name: "Configuration" }).click();
+    await expect(page.getByRole("heading", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.getByLabel("Nom", { exact: true })).toHaveValue(renamed);
+    await expect(page.getByRole("button", { name: "Vert, nuance 4" })).toHaveAttribute("aria-pressed", "true");
+  } finally {
+    await page.goto(dashboardUrl, { timeout: 15_000 }).catch(() => undefined);
+    const title = page.getByRole("button", { name: renamed });
+    if (await title.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await title.click();
+      await page.getByLabel("Nom du dashboard").fill(original);
+      await page.getByRole("button", { name: "Enregistrer" }).click();
+    }
+    const colors = page.getByRole("button", { name: "Couleurs" });
+    if (await colors.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await colors.click();
+      const reset = page.getByRole("button", { name: "Réinitialiser" });
+      if (await reset.isEnabled({ timeout: 2_000 }).catch(() => false)) await reset.click();
+    }
+  }
 });

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import { plainDashes } from "@/lib/text";
 import { CopyTableButton } from "./CopyTableButton";
 import { campaignTableMatrix, type CampaignTableRow } from "./table-clipboard";
 
@@ -59,8 +60,8 @@ export function CampaignTable({
           <tbody className="tabular">
             {sorted.map((row) => (
               <tr key={row.campaignId} className="border-b border-slate-100 last:border-0">
-                <td className="max-w-xs truncate py-2 pr-4 text-slate-800" title={row.name}>
-                  {row.name}
+                <td className="max-w-xs truncate py-2 pr-4 text-slate-800" title={plainDashes(row.name)}>
+                  {plainDashes(row.name)}
                 </td>
                 {metrics.map((key) => (
                   <td key={key} className="py-2 pl-4 text-right whitespace-nowrap text-slate-700">
