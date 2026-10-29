@@ -4,6 +4,7 @@ import { Card, CardHeader, EmptyState, Field, PageHeader, inputClass } from "@/c
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { accountCountsByClient, dashboardCountsByClient } from "@/server/admin/counts";
+import { plainDashes } from "@/lib/text";
 import { clients } from "@/server/db/schema";
 import { createClientAction } from "../actions/clients";
 
@@ -30,7 +31,7 @@ export default async function ClientsPage() {
                 {rows.map((c) => (
                   <li key={c.id}>
                     <Link href={`/admin/clients/${c.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-slate-50">
-                      <span className="font-medium text-slate-900">{c.name}</span>
+                      <span className="font-medium text-slate-900">{plainDashes(c.name)}</span>
                       <span className="text-sm text-slate-500">
                         {c.accounts} compte(s) · {c.dashboards} dashboard(s)
                       </span>

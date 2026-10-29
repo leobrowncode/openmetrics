@@ -13,7 +13,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "OpenMetrics — Reporting Meta Ads",
+  title: "OpenMetrics - Reporting Meta Ads",
   description: "Dashboards Meta Ads pour l'agence et ses clients.",
   robots: { index: false, follow: false },
   referrer: "no-referrer",

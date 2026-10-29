@@ -156,12 +156,14 @@ export function ChartColorEditor({
     <div ref={root}>
       <button
         type="button"
-        className={cx(buttonClass("secondary", "sm"), "h-9 py-0")}
+        className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-slate-300 bg-white text-slate-700 shadow-sm hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
+        aria-label="Couleurs"
+        title="Couleurs des courbes"
         aria-expanded={open}
         aria-controls={open ? "chart-color-panel" : undefined}
         onClick={() => setOpen((value) => !value)}
       >
-        Couleurs
+        <PaletteIcon />
       </button>
       {open && (
         <div
@@ -172,5 +174,21 @@ export function ChartColorEditor({
         </div>
       )}
     </div>
+  );
+}
+
+function PaletteIcon() {
+  return (
+    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.75" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        d="M12 22a1 1 0 0 1 0-20 10 9 0 0 1 10 9 5 5 0 0 1-5 5h-2.25a1.75 1.75 0 0 0-1.4 2.8l.3.4a1.75 1.75 0 0 1-1.4 2.8z"
+      />
+      <circle cx="13.5" cy="6.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="17.5" cy="10.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="8.5" cy="7.5" r="1" fill="currentColor" stroke="none" />
+      <circle cx="6.5" cy="12.5" r="1" fill="currentColor" stroke="none" />
+    </svg>
   );
 }

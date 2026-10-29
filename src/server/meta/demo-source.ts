@@ -27,27 +27,27 @@ interface DemoAccount extends MetaAdAccountInfo {
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     metaAccountId: "act_100000000000001",
-    name: "Association Horizon — Dons (démo)",
+    name: "Association Horizon - Dons (démo)",
     currency: "EUR",
     timezoneName: "Europe/Paris",
     accountStatus: 1,
     campaigns: [
-      { id: "120200000000000101", name: "FDA — Broad — Dons", objective: "OUTCOME_SALES", dailyBudget: 85, cpm: 7.5, ctrAll: 0.021, linkShare: 0.55, cvr: 0.018, basket: 210, start: "2025-01-01" },
-      { id: "120200000000000102", name: "FDA — Lookalike visiteurs 180j", objective: "OUTCOME_SALES", dailyBudget: 25, cpm: 9.8, ctrAll: 0.018, linkShare: 0.6, cvr: 0.022, basket: 240, start: "2025-01-01" },
-      { id: "120200000000000103", name: "Notoriété — Vidéo témoignages", objective: "OUTCOME_AWARENESS", dailyBudget: 30, cpm: 3.2, ctrAll: 0.009, linkShare: 0.3, cvr: 0.002, basket: 90, start: "2025-03-01" },
+      { id: "120200000000000101", name: "FDA - Broad - Dons", objective: "OUTCOME_SALES", dailyBudget: 85, cpm: 7.5, ctrAll: 0.021, linkShare: 0.55, cvr: 0.018, basket: 210, start: "2025-01-01" },
+      { id: "120200000000000102", name: "FDA - Lookalike visiteurs 180j", objective: "OUTCOME_SALES", dailyBudget: 25, cpm: 9.8, ctrAll: 0.018, linkShare: 0.6, cvr: 0.022, basket: 240, start: "2025-01-01" },
+      { id: "120200000000000103", name: "Notoriété - Vidéo témoignages", objective: "OUTCOME_AWARENESS", dailyBudget: 30, cpm: 3.2, ctrAll: 0.009, linkShare: 0.3, cvr: 0.002, basket: 90, start: "2025-03-01" },
     ],
   },
   {
     metaAccountId: "act_100000000000002",
-    name: "Maison Lumen — E-commerce (démo)",
+    name: "Maison Lumen - E-commerce (démo)",
     currency: "EUR",
     timezoneName: "Europe/Paris",
     accountStatus: 1,
     campaigns: [
-      { id: "120200000000000201", name: "Advantage+ Shopping — Catalogue", objective: "OUTCOME_SALES", dailyBudget: 140, cpm: 11.5, ctrAll: 0.024, linkShare: 0.65, cvr: 0.031, basket: 68, start: "2025-01-01" },
-      { id: "120200000000000202", name: "Retargeting — Paniers abandonnés", objective: "OUTCOME_SALES", dailyBudget: 35, cpm: 15.0, ctrAll: 0.032, linkShare: 0.7, cvr: 0.055, basket: 74, start: "2025-01-01" },
-      { id: "120200000000000203", name: "Prospection — Intérêts déco", objective: "OUTCOME_TRAFFIC", dailyBudget: 50, cpm: 6.4, ctrAll: 0.017, linkShare: 0.62, cvr: 0.008, basket: 61, start: "2025-02-15" },
-      { id: "120200000000000204", name: "Leads — Newsletter -10 %", objective: "OUTCOME_LEADS", dailyBudget: 20, cpm: 8.1, ctrAll: 0.02, linkShare: 0.5, cvr: 0.0, basket: 0, start: "2025-04-01" },
+      { id: "120200000000000201", name: "Advantage+ Shopping - Catalogue", objective: "OUTCOME_SALES", dailyBudget: 140, cpm: 11.5, ctrAll: 0.024, linkShare: 0.65, cvr: 0.031, basket: 68, start: "2025-01-01" },
+      { id: "120200000000000202", name: "Retargeting - Paniers abandonnés", objective: "OUTCOME_SALES", dailyBudget: 35, cpm: 15.0, ctrAll: 0.032, linkShare: 0.7, cvr: 0.055, basket: 74, start: "2025-01-01" },
+      { id: "120200000000000203", name: "Prospection - Intérêts déco", objective: "OUTCOME_TRAFFIC", dailyBudget: 50, cpm: 6.4, ctrAll: 0.017, linkShare: 0.62, cvr: 0.008, basket: 61, start: "2025-02-15" },
+      { id: "120200000000000204", name: "Leads - Newsletter -10 %", objective: "OUTCOME_LEADS", dailyBudget: 20, cpm: 8.1, ctrAll: 0.02, linkShare: 0.5, cvr: 0.0, basket: 0, start: "2025-04-01" },
     ],
   },
 ];

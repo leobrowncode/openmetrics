@@ -1,6 +1,7 @@
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ConnectionStatusBadge, TokenExpiryBadge, isTokenExpiringSoon } from "@/components/admin/status";
 import { Badge, Button, Card, CardHeader, Field, Notice, PageHeader, buttonClass, formatDateTime, inputClass } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { accountCountsByConnection } from "@/server/admin/counts";
@@ -42,7 +43,7 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/admi
               <CardHeader
                 title={
                   <span className="flex flex-wrap items-center gap-2">
-                    {connection.label} <ConnectionStatusBadge status={connection.status} />
+                    {plainDashes(connection.label)} <ConnectionStatusBadge status={connection.status} />
                     <TokenExpiryBadge expiresAt={connection.tokenExpiresAt} />
                     {connection.kind === "demo" && <Badge tone="amber">Données synthétiques</Badge>}
                   </span>

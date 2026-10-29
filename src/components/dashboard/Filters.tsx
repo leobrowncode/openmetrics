@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { PERIOD_LABELS, PERIOD_PRESETS, formatDateFr, type DateRange, type PeriodPreset } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import { buttonClass, cx, inputClass } from "../ui";
 
 export function PeriodPicker({
@@ -59,7 +60,7 @@ export function PeriodPicker({
         </form>
       ) : (
         <span className="inline-flex h-9 items-center whitespace-nowrap text-sm text-slate-500 tabular">
-          {formatDateFr(range.from)} – {formatDateFr(range.to)}
+          {formatDateFr(range.from)} - {formatDateFr(range.to)}
         </span>
       )}
     </div>
@@ -93,9 +94,9 @@ export function CampaignFilter({
     selected.length === 0
       ? "Toutes les campagnes"
       : selected.length === 1
-        ? (campaigns.find((c) => c.id === selected[0])?.name ?? "1 campagne")
+        ? (plainDashes(campaigns.find((c) => c.id === selected[0])?.name ?? "") || "1 campagne")
         : `${selected.length} campagnes`;
-  const visible = campaigns.filter((c) => c.name.toLowerCase().includes(search.toLowerCase()));
+  const visible = campaigns.filter((c) => plainDashes(c.name).toLowerCase().includes(search.toLowerCase()));
 
   return (
     <div className="relative" ref={ref}>
@@ -126,7 +127,7 @@ export function CampaignFilter({
                   checked={draft.includes(c.id)}
                   onChange={(e) => setDraft(e.target.checked ? [...draft, c.id] : draft.filter((id) => id !== c.id))}
                 />
-                <span className="text-slate-800">{c.name}</span>
+                <span className="text-slate-800">{plainDashes(c.name)}</span>
               </label>
             ))}
             {visible.length === 0 && <p className="px-2 py-1.5 text-sm text-slate-500">Aucune campagne.</p>}

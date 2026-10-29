@@ -1,4 +1,5 @@
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import { plainDashes } from "@/lib/text";
 import { formatBucket, type Granularity } from "./aggregate";
 
 export interface CampaignTableRow extends Sums {
@@ -39,7 +40,7 @@ export function campaignTableMatrix(
   currency: string,
 ): string[][] {
   const header = ["Campagne", ...metrics.map((key) => getMetric(key).shortLabel)];
-  const body = rows.map((row) => [row.name, ...metrics.map((key) => clipboardMetric(key, row, currency))]);
+  const body = rows.map((row) => [plainDashes(row.name), ...metrics.map((key) => clipboardMetric(key, row, currency))]);
   const total = ["Total", ...metrics.map((key) => clipboardMetric(key, totals, currency))];
   return [header, ...body, total];
 }

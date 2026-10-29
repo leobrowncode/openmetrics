@@ -4,6 +4,7 @@ import { useState, useTransition } from "react";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
 import { formatDateFr } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import { Notice, formatDateTime } from "../ui";
 import { CampaignTable } from "./CampaignTable";
 import { ChartColorEditor } from "./ChartColorEditor";
@@ -33,6 +34,8 @@ export function DashboardView({
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
   const showIdentity = mode !== "admin";
+  const pageTitle = plainDashes(title);
+  const pageSubtitle = subtitle ? plainDashes(subtitle) : undefined;
   const { data, query } = payload;
   const canChangePeriod = mode === "admin" || config.viewer.allowPeriodChange;
   const canFilter = mode === "admin" || config.viewer.allowCampaignFilter;
@@ -72,7 +75,7 @@ export function DashboardView({
       case "timeseries":
         return (
           <TimeSeriesChart
-            title={widget.title}
+            title={widget.title ? plainDashes(widget.title) : undefined}
             metrics={widget.metrics}
             series={data.series}
             range={data.range}
@@ -84,7 +87,7 @@ export function DashboardView({
       case "campaign_table":
         return (
           <CampaignTable
-            title={widget.title}
+            title={widget.title ? plainDashes(widget.title) : undefined}
             metrics={widget.metrics}
             rows={data.byCampaign}
             totals={data.totals}
@@ -99,8 +102,8 @@ export function DashboardView({
       <header className="flex flex-col gap-3">
         {showIdentity && (
           <div>
-            {subtitle && <p className="text-sm font-medium text-brand-600">{subtitle}</p>}
-            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+            {pageSubtitle && <p className="text-sm font-medium text-brand-600">{pageSubtitle}</p>}
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{pageTitle}</h1>
           </div>
         )}
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
@@ -111,7 +114,7 @@ export function DashboardView({
             </p>
             {data.previousRange && (
               <p className="text-xs text-slate-500">
-                vs {formatDateFr(data.previousRange.from)} – {formatDateFr(data.previousRange.to)}
+                vs {formatDateFr(data.previousRange.from)} - {formatDateFr(data.previousRange.to)}
               </p>
             )}
           </div>
@@ -126,7 +129,7 @@ export function DashboardView({
               />
             ) : (
               <span className="inline-flex h-9 items-center whitespace-nowrap text-sm text-slate-600 tabular">
-                {formatDateFr(query.range.from)} – {formatDateFr(query.range.to)}
+                {formatDateFr(query.range.from)} - {formatDateFr(query.range.to)}
               </span>
             )}
             {canFilter && data.campaigns.length > 0 && (
@@ -150,7 +153,7 @@ export function DashboardView({
             <section key={section.id} aria-labelledby={`h-${section.id}`}>
               <h2 id={`h-${section.id}`} className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
                 <span className="h-5 w-1.5 rounded-full" style={{ backgroundColor: chartColors[0] }} aria-hidden />
-                {section.title}
+                {plainDashes(section.title)}
               </h2>
               <div className="space-y-4">
                 {section.widgets.map((widget) => (

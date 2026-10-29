@@ -6,7 +6,7 @@ import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD } from "@/server/db/bootstrap";
 import { demoModeEnabled } from "@/server/demo/public-demo";
 import { LoginForm } from "./LoginForm";
 
-export const metadata: Metadata = { title: "Connexion — OpenMetrics" };
+export const metadata: Metadata = { title: "Connexion - OpenMetrics" };
 
 export default async function LoginPage() {
   if (await currentAdmin()) redirect("/admin");
@@ -16,7 +16,7 @@ export default async function LoginPage() {
         <div className="mb-6 text-center">
           <p className="text-sm font-semibold uppercase tracking-widest text-brand-600">OpenMetrics</p>
           <h1 className="mt-2 text-xl font-semibold text-slate-900">Espace agence</h1>
-          <p className="mt-1 text-sm text-slate-500">Reporting Meta Ads — accès administrateur</p>
+          <p className="mt-1 text-sm text-slate-500">Reporting Meta Ads - accès administrateur</p>
         </div>
         <LoginForm />
         {demoModeEnabled() && (

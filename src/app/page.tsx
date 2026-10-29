@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { Card, Notice, PageHeader } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 import { demoModeEnabled, listPublicDemoDashboards } from "@/server/demo/public-demo";
 import { getDb } from "@/server/db/client";
 
@@ -45,9 +46,9 @@ export default async function Home() {
         {dashboards.map((dashboard) => (
           <Link key={dashboard.id} href={`/demo/${dashboard.id}`} className="block rounded-xl focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500">
             <Card className="h-full p-5 transition-colors hover:border-brand-500">
-              <p className="text-xs font-medium uppercase tracking-wide text-brand-600">{dashboard.clientName}</p>
-              <h2 className="mt-1 text-lg font-semibold text-slate-900">{dashboard.name}</h2>
-              <p className="mt-2 text-sm text-slate-500">{dashboard.accounts.join(" · ")}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-brand-600">{plainDashes(dashboard.clientName)}</p>
+              <h2 className="mt-1 text-lg font-semibold text-slate-900">{plainDashes(dashboard.name)}</h2>
+              <p className="mt-2 text-sm text-slate-500">{dashboard.accounts.map(plainDashes).join(" · ")}</p>
               <p className="mt-4 text-sm font-medium text-brand-700">Ouvrir le dashboard</p>
             </Card>
           </Link>

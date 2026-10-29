@@ -112,7 +112,7 @@ export function EmptyState({ title, children }: { title: string; children?: Reac
 }
 
 export function formatDateTime(value: Date | string | null, timeZone = "Europe/Paris"): string {
-  if (!value) return "—";
+  if (!value) return "-";
   return new Intl.DateTimeFormat("fr-FR", {
     dateStyle: "short",
     timeStyle: "short",

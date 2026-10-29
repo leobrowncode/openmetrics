@@ -213,7 +213,7 @@ export function formatMetric(
   currency: string,
   locale = "fr-FR",
 ): string {
-  if (value === null || !Number.isFinite(value)) return "—";
+  if (value === null || !Number.isFinite(value)) return "-";
   const unit = METRICS[key].unit;
   switch (unit) {
     case "currency":

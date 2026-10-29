@@ -3,10 +3,12 @@
 import { useState, useTransition } from "react";
 import { renameDashboardAction } from "@/app/admin/actions/dashboards";
 import { Button, inputClass, cx } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 
 export function DashboardTitle({ dashboardId, name }: { dashboardId: string; name: string }) {
+  const cleanName = plainDashes(name);
   const [editing, setEditing] = useState(false);
-  const [value, setValue] = useState(name);
+  const [value, setValue] = useState(cleanName);
   const [override, setOverride] = useState<string | null>(null);
   const [seenName, setSeenName] = useState(name);
   const [error, setError] = useState<string | null>(null);
@@ -14,11 +16,11 @@ export function DashboardTitle({ dashboardId, name }: { dashboardId: string; nam
   if (name !== seenName) {
     setSeenName(name);
     setOverride(null);
-    setValue(name);
+    setValue(plainDashes(name));
     setEditing(false);
     setError(null);
   }
-  const shown = override ?? name;
+  const shown = plainDashes(override ?? name);
 
   function cancel() {
     setValue(shown);

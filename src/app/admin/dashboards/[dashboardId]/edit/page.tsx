@@ -5,6 +5,7 @@ import { ChartColorEditor } from "@/components/dashboard/ChartColorEditor";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
 import { CHART_STYLES, WIDGET_TYPE_LABELS, WIDGET_TYPES, parseDashboardConfig } from "@/lib/dashboard-config";
 import { METRIC_KEYS, getMetric } from "@/lib/metrics";
+import { plainDashes } from "@/lib/text";
 import { PERIOD_LABELS, PERIOD_PRESETS } from "@/lib/periods";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
@@ -45,7 +46,7 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
               <form action={renameSectionAction} className="flex flex-1 gap-2">
                 <input type="hidden" name="dashboardId" value={dashboard.id} />
                 <input type="hidden" name="sectionId" value={section.id} />
-                <input name="title" defaultValue={section.title} className={`${inputClass} font-semibold`} aria-label="Titre de section" />
+                <input name="title" defaultValue={plainDashes(section.title)} className={`${inputClass} font-semibold`} aria-label="Titre de section" />
                 <Button variant="secondary" size="sm">
                   Renommer
                 </Button>
@@ -76,7 +77,7 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
                   <div>
                     <p className="font-medium text-slate-900">
                       {WIDGET_TYPE_LABELS[w.type]}
-                      {w.title ? ` — ${w.title}` : ""}
+                      {w.title ? ` - ${plainDashes(w.title)}` : ""}
                       {w.chartStyle ? ` (${CHART_STYLE_LABELS[w.chartStyle]})` : ""}
                     </p>
                     <p className="text-xs text-slate-500">{w.metrics.map((m) => getMetric(m).label).join(" · ")}</p>
@@ -163,7 +164,7 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
           <div className="p-5">
             <ActionForm action={updateDashboardSettingsAction} hidden={hidden} submitLabel="Enregistrer">
               <Field label="Nom">
-                <input name="name" defaultValue={dashboard.name} className={inputClass} required />
+                <input name="name" defaultValue={plainDashes(dashboard.name)} className={inputClass} required />
               </Field>
               <Field label="Période par défaut">
                 <select name="defaultPeriod" defaultValue={config.defaultPeriod} className={inputClass}>
@@ -179,7 +180,7 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
                 {accounts.map((a) => (
                   <label key={a.id} className="flex items-center gap-2 text-sm">
                     <input type="checkbox" name="adAccountIds" value={a.id} defaultChecked={dashboard.adAccountIds.includes(a.id)} />
-                    {a.name} <span className="text-xs text-slate-500">({a.currency})</span>
+                    {plainDashes(a.name)} <span className="text-xs text-slate-500">({a.currency})</span>
                   </label>
                 ))}
                 <p className="text-xs text-slate-500">Aucune case cochée = tous les comptes du client.</p>
@@ -208,13 +209,13 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
                 <select name="targetClientId" defaultValue={dashboard.clientId} className={inputClass}>
                   {allClients.map((c) => (
                     <option key={c.id} value={c.id}>
-                      {c.name}
+                      {plainDashes(c.name)}
                     </option>
                   ))}
                 </select>
               </Field>
               <Field label="Nom de la copie">
-                <input name="name" className={inputClass} placeholder={`${dashboard.name} (copie)`} />
+                <input name="name" className={inputClass} placeholder={`${plainDashes(dashboard.name)} (copie)`} />
               </Field>
             </ActionForm>
           </div>
