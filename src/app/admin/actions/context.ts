@@ -9,6 +9,8 @@ export interface ActionState {
   error?: string;
   message?: string;
   shareUrl?: string;
+  /** Present with shareUrl: the row that can offer the one-time copy. */
+  shareLinkId?: string;
 }
 
 export async function adminContext(): Promise<{ admin: AdminIdentity; db: Db; log: (action: string, targetType: string, targetId: string | null, detail?: Record<string, unknown>) => Promise<void> }> {

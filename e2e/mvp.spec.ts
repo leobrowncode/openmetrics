@@ -21,9 +21,12 @@ async function createShareLink(page: Page, label: string): Promise<string> {
   await page.getByRole("link", { name: "Partage" }).click();
   await page.getByLabel("Destinataire / libellé").fill(label);
   await page.getByRole("button", { name: "Générer le lien" }).click();
-  const input = page.getByLabel("Lien privé");
-  await expect(input).toBeVisible();
-  return input.inputValue();
+  await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
+  const copy = page.getByRole("button", { name: `Copier le lien de ${label}` });
+  await expect(copy).toBeVisible();
+  await copy.click();
+  await expect(page.getByRole("button", { name: `Lien de ${label} copié` })).toBeVisible();
+  return page.evaluate(() => navigator.clipboard.readText());
 }
 
 async function viewerPage(browser: Browser): Promise<Page> {

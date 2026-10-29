@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useState, type ReactNode } from "react";
+import { useActionState, useEffect, useRef, useState, type ReactNode } from "react";
 import type { ActionState } from "@/app/admin/actions/context";
 import { Button, Notice, inputClass, cx } from "../ui";
 
@@ -14,6 +14,7 @@ export function ActionForm({
   variant = "primary",
   className,
   hidden,
+  onResult,
 }: {
   action: Action;
   children?: ReactNode;
@@ -22,8 +23,16 @@ export function ActionForm({
   variant?: "primary" | "secondary" | "danger";
   className?: string;
   hidden?: Record<string, string>;
+  /** Receives each new action result. A share URL is then not repeated under the form. */
+  onResult?: (state: ActionState) => void;
 }) {
   const [state, formAction, pending] = useActionState(action, null);
+  const delivered = useRef<ActionState | null>(null);
+  useEffect(() => {
+    if (!onResult || !state || state === delivered.current) return;
+    delivered.current = state;
+    onResult(state);
+  }, [onResult, state]);
   return (
     <form action={formAction} className={cx("space-y-3", className)}>
       {hidden && Object.entries(hidden).map(([name, value]) => <input key={name} type="hidden" name={name} value={value} />)}
@@ -33,7 +42,7 @@ export function ActionForm({
       </Button>
       {state?.error && <Notice tone="red">{state.error}</Notice>}
       {state?.message && <Notice tone="green">{state.message}</Notice>}
-      {state?.shareUrl && <ShareUrlReveal url={state.shareUrl} />}
+      {state?.shareUrl && !onResult && <ShareUrlReveal url={state.shareUrl} />}
     </form>
   );
 }
