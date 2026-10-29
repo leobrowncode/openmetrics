@@ -2,15 +2,15 @@ import Link from "next/link";
 import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
+import { AdAccountPicker } from "@/components/admin/AdAccountPicker";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { SyncStatusBadge } from "@/components/admin/status";
 import { Badge, Button, Card, CardHeader, EmptyState, Field, Notice, PageHeader, formatDateTime, inputClass } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { adAccounts, clients, dashboards, dashboardTemplates, metaConnections } from "@/server/db/schema";
-import { defaultSourceFactory, observedActionTypes } from "@/server/sync/sync-service";
-import type { MetaAdAccountInfo } from "@/server/meta/source";
-import { describeMetaError, MetaApiError } from "@/server/meta/errors";
+import { adAccounts, clients, dashboards, dashboardTemplates } from "@/server/db/schema";
+import { observedActionTypes } from "@/server/sync/sync-service";
+import { listAvailableAdAccounts } from "@/server/meta/available-accounts";
 import {
   addAdAccountAction,
   deleteClientAction,
@@ -29,11 +29,10 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) notFound();
 
-  const [accounts, clientDashboards, templates, connections] = await Promise.all([
+  const [accounts, clientDashboards, templates] = await Promise.all([
     db.select().from(adAccounts).where(eq(adAccounts.clientId, clientId)).orderBy(adAccounts.name),
     db.select().from(dashboards).where(eq(dashboards.clientId, clientId)).orderBy(desc(dashboards.updatedAt)),
     db.select().from(dashboardTemplates).orderBy(desc(dashboardTemplates.builtIn), dashboardTemplates.name),
-    db.select().from(metaConnections).where(eq(metaConnections.status, "active")),
   ]);
   const observed = new Map(await Promise.all(accounts.map(async (a) => [a.id, await observedActionTypes(db, a.id)] as const)));
 
@@ -132,16 +131,11 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
             </ul>
           )}
           <div className="border-t border-slate-100 p-5">
-            <h3 className="mb-3 text-sm font-semibold text-slate-900">Ajouter un compte</h3>
-            {connections.length === 0 ? (
-              <Notice>
-                Aucune connexion Meta active. <Link className="underline" href="/admin/connections">Ajouter une connexion</Link>
-              </Notice>
-            ) : (
-              <Suspense fallback={<p className="text-sm text-slate-500">Recherche des comptes Meta…</p>}>
-                <AvailableAccounts clientId={client.id} connections={connections} />
-              </Suspense>
-            )}
+            <h3 className="mb-1 text-sm font-semibold text-slate-900">Ajouter un compte</h3>
+            <p className="mb-3 text-sm text-slate-500">Comptes déjà accessibles via Meta, pas encore rattachés à un client.</p>
+            <Suspense fallback={<p className="text-sm text-slate-500">Recherche des comptes Meta…</p>}>
+              <AvailableAccountPicker clientId={client.id} />
+            </Suspense>
           </div>
         </Card>
 
@@ -191,58 +185,29 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
   );
 }
 
-async function AvailableAccounts({
-  clientId,
-  connections,
-}: {
-  clientId: string;
-  connections: Array<typeof metaConnections.$inferSelect>;
-}) {
-  const db = await getDb();
-  const linked = new Set((await db.select({ id: adAccounts.metaAccountId }).from(adAccounts)).map((account) => account.id));
-  const available = await Promise.all(
-    connections.map(async (connection) => {
-      try {
-        const list = await defaultSourceFactory(connection).listAdAccounts();
-        return { connectionId: connection.id, connectionLabel: connection.label, accounts: list.filter((account) => !linked.has(account.metaAccountId)) };
-      } catch (error) {
-        return {
-          connectionId: connection.id,
-          connectionLabel: connection.label,
-          accounts: [] as MetaAdAccountInfo[],
-          error: error instanceof MetaApiError ? describeMetaError(error) : "Liste des comptes indisponible.",
-        };
-      }
-    }),
-  );
-
+async function AvailableAccountPicker({ clientId }: { clientId: string }) {
+  const available = await listAvailableAdAccounts(await getDb());
+  if (available.connectionCount === 0) {
+    return (
+      <Notice>
+        Aucune connexion Meta active. <Link className="underline" href="/admin/connections">Ajouter une connexion</Link>
+      </Notice>
+    );
+  }
   return (
-    <div className="space-y-4">
-      {available.map((group) => (
-        <div key={group.connectionId}>
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.connectionLabel}</p>
-          {group.error ? (
-            <Notice tone="red">{group.error}</Notice>
-          ) : group.accounts.length === 0 ? (
-            <p className="text-sm text-slate-500">Tous les comptes accessibles sont déjà rattachés à un client.</p>
-          ) : (
-            <ActionForm
-              action={addAdAccountAction}
-              hidden={{ clientId, connectionId: group.connectionId }}
-              submitLabel="Rattacher ce compte"
-              className="flex flex-wrap items-start gap-2 space-y-0"
-            >
-              <select name="metaAccountId" className={`${inputClass} w-auto`} aria-label="Compte publicitaire">
-                {group.accounts.map((account) => (
-                  <option key={account.metaAccountId} value={account.metaAccountId}>
-                    {account.name} ({account.metaAccountId}, {account.currency})
-                  </option>
-                ))}
-              </select>
-            </ActionForm>
-          )}
-        </div>
+    <div className="space-y-3">
+      {available.errors.map((error) => (
+        <Notice key={error.connectionId} tone="red">
+          {error.connectionLabel} : {error.message}
+        </Notice>
       ))}
+      {available.accounts.length === 0 && available.errors.length === 0 ? (
+        <p className="text-sm text-slate-500">Tous les comptes accessibles sont déjà rattachés à un client.</p>
+      ) : available.accounts.length > 0 ? (
+        <ActionForm action={addAdAccountAction} hidden={{ clientId }} submitLabel="Rattacher ce compte">
+          <AdAccountPicker accounts={available.accounts} />
+        </ActionForm>
+      ) : null}
     </div>
   );
 }

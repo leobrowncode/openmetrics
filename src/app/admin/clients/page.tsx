@@ -1,11 +1,12 @@
 import Link from "next/link";
-import { ActionForm } from "@/components/admin/ActionForm";
-import { Card, CardHeader, EmptyState, Field, PageHeader, inputClass } from "@/components/ui";
+import { Suspense } from "react";
+import { NewClientForm } from "@/components/admin/NewClientForm";
+import { Card, CardHeader, EmptyState, PageHeader } from "@/components/ui";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { accountCountsByClient, dashboardCountsByClient } from "@/server/admin/counts";
 import { clients } from "@/server/db/schema";
-import { createClientAction } from "../actions/clients";
+import { listAvailableAdAccounts } from "@/server/meta/available-accounts";
 
 export default async function ClientsPage() {
   await requireAdmin();
@@ -24,8 +25,8 @@ export default async function ClientsPage() {
   return (
     <>
       <PageHeader title="Clients" description="Chaque client regroupe ses comptes publicitaires Meta et ses dashboards. Les données ne sont jamais partagées entre clients." />
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+      <div className="grid items-start gap-6 lg:grid-cols-5">
+        <div className="order-2 lg:order-1 lg:col-span-3">
           {rows.length === 0 ? (
             <EmptyState title="Aucun client">Créez un premier client pour y rattacher des comptes Meta Ads.</EmptyState>
           ) : (
@@ -45,17 +46,22 @@ export default async function ClientsPage() {
             </Card>
           )}
         </div>
-        <Card>
-          <CardHeader title="Nouveau client" />
-          <div className="p-5">
-            <ActionForm action={createClientAction} submitLabel="Créer le client">
-              <Field label="Nom du client">
-                <input name="name" required minLength={2} maxLength={120} className={inputClass} placeholder="Ex. Le Rocher" />
-              </Field>
-            </ActionForm>
-          </div>
-        </Card>
+        <Suspense fallback={<Card className="order-1 lg:order-2 lg:col-span-2"><CardHeader title="Nouveau client" description="Recherche des comptes Meta…" /></Card>}>
+          <NewClientCard />
+        </Suspense>
       </div>
     </>
+  );
+}
+
+async function NewClientCard() {
+  const available = await listAvailableAdAccounts(await getDb());
+  return (
+    <Card className="order-1 lg:order-2 lg:col-span-2">
+      <CardHeader title="Nouveau client" description="Les comptes publicitaires déjà accessibles via Meta." />
+      <div className="p-5">
+        <NewClientForm accounts={available.accounts} errors={available.errors} connectionCount={available.connectionCount} />
+      </div>
+    </Card>
   );
 }
