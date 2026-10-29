@@ -4,7 +4,7 @@ import { useState, useTransition } from "react";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
 import { formatDateFr } from "@/lib/periods";
-import { Notice, cx, formatDateTime } from "../ui";
+import { Notice, formatDateTime } from "../ui";
 import { CampaignTable } from "./CampaignTable";
 import { ChartColorEditor } from "./ChartColorEditor";
 import { CampaignFilter, PeriodPicker } from "./Filters";
@@ -96,39 +96,46 @@ export function DashboardView({
 
   return (
     <div className="mx-auto w-full max-w-7xl space-y-6">
-      <header className="flex flex-wrap items-end justify-between gap-4">
-        <div>
-          {showIdentity && (
-            <>
-              {subtitle && <p className="text-sm font-medium text-brand-600">{subtitle}</p>}
-              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-            </>
-          )}
-          <p className={cx("text-sm text-slate-500", showIdentity && "mt-1")}>
-            Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
-            {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
-          </p>
-        </div>
-        <div className="relative flex flex-wrap items-center gap-2" aria-busy={pending}>
-          {canChangePeriod ? (
-            <PeriodPicker
-              key={`${query.period}:${query.range.from}:${query.range.to}`}
-              period={query.period}
-              range={query.range}
-              disabled={pending}
-              onChange={(next) => load(next.period === "custom" ? next : { period: next.period })}
-            />
-          ) : (
-            <span className="text-sm text-slate-600 tabular">
-              {formatDateFr(query.range.from)} – {formatDateFr(query.range.to)}
-            </span>
-          )}
-          {canFilter && data.campaigns.length > 0 && (
-            <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
-          )}
-          {mode === "admin" && dashboardId && (
-            <ChartColorEditor dashboardId={dashboardId} initialColors={config.chartColors} onColorsChange={setChartColors} />
-          )}
+      <header className="flex flex-col gap-3">
+        {showIdentity && (
+          <div>
+            {subtitle && <p className="text-sm font-medium text-brand-600">{subtitle}</p>}
+            <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+          </div>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
+          <div className="min-w-0 space-y-1">
+            <p className="text-sm text-slate-500">
+              Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
+              {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
+            </p>
+            {data.previousRange && (
+              <p className="text-xs text-slate-500">
+                Comparaison avec la période précédente : {formatDateFr(data.previousRange.from)} – {formatDateFr(data.previousRange.to)}
+              </p>
+            )}
+          </div>
+          <div className="relative flex flex-wrap items-center gap-2" aria-busy={pending}>
+            {canChangePeriod ? (
+              <PeriodPicker
+                key={`${query.period}:${query.range.from}:${query.range.to}`}
+                period={query.period}
+                range={query.range}
+                disabled={pending}
+                onChange={(next) => load(next.period === "custom" ? next : { period: next.period })}
+              />
+            ) : (
+              <span className="inline-flex h-9 items-center whitespace-nowrap text-sm text-slate-600 tabular">
+                {formatDateFr(query.range.from)} – {formatDateFr(query.range.to)}
+              </span>
+            )}
+            {canFilter && data.campaigns.length > 0 && (
+              <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
+            )}
+            {mode === "admin" && dashboardId && (
+              <ChartColorEditor dashboardId={dashboardId} initialColors={config.chartColors} onColorsChange={setChartColors} />
+            )}
+          </div>
         </div>
       </header>
 
@@ -136,11 +143,6 @@ export function DashboardView({
       {data.warnings.map((w) => (
         <Notice key={w}>{w}</Notice>
       ))}
-      {data.previousRange && (
-        <p className="text-xs text-slate-500">
-          Comparaison avec la période précédente : {formatDateFr(data.previousRange.from)} – {formatDateFr(data.previousRange.to)}
-        </p>
-      )}
 
       <div className={pending ? "opacity-60 transition-opacity" : "transition-opacity"}>
         <div className="space-y-8">

@@ -104,32 +104,27 @@ export function ChartColorEditor({
           </button>
         ))}
       </div>
-      <div className="space-y-1.5">
-        {CHART_COLOR_GROUPS.map((group) => (
-          <div key={group.id} className="flex items-center gap-2">
-            <span className="w-20 shrink-0 text-xs text-slate-500">{group.label}</span>
-            <div className="flex gap-1.5">
-              {group.shades.map((hex, shadeIndex) => {
-                const selected = colors[active] === hex;
-                return (
-                  <button
-                    key={hex}
-                    type="button"
-                    aria-label={`${group.label}, nuance ${shadeIndex + 1}`}
-                    aria-pressed={selected}
-                    title={hex}
-                    onClick={() => apply(hex)}
-                    className={cx(
-                      "h-6 w-6 rounded-full border border-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
-                      selected ? "ring-2 ring-slate-900 ring-offset-2" : "hover:ring-2 hover:ring-slate-300 hover:ring-offset-1",
-                    )}
-                    style={{ backgroundColor: hex }}
-                  />
-                );
-              })}
-            </div>
-          </div>
-        ))}
+      <div className="grid w-fit grid-cols-5 gap-1.5 p-0.5">
+        {CHART_COLOR_GROUPS.flatMap((group) =>
+          group.shades.map((hex, shadeIndex) => {
+            const selected = colors[active] === hex;
+            return (
+              <button
+                key={hex}
+                type="button"
+                aria-label={`${group.label}, nuance ${shadeIndex + 1}`}
+                aria-pressed={selected}
+                title={hex}
+                onClick={() => apply(hex)}
+                className={cx(
+                  "h-6 w-6 rounded-full border border-black/10 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500",
+                  selected ? "ring-2 ring-slate-900 ring-offset-2" : "hover:ring-2 hover:ring-slate-300 hover:ring-offset-1",
+                )}
+                style={{ backgroundColor: hex }}
+              />
+            );
+          }),
+        )}
       </div>
       <div className="flex items-center justify-between gap-3">
         <button
@@ -161,7 +156,7 @@ export function ChartColorEditor({
     <div ref={root}>
       <button
         type="button"
-        className={cx(buttonClass("secondary", "sm"), "py-2")}
+        className={cx(buttonClass("secondary", "sm"), "h-9 py-0")}
         aria-expanded={open}
         aria-controls={open ? "chart-color-panel" : undefined}
         onClick={() => setOpen((value) => !value)}

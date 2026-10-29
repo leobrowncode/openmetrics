@@ -20,10 +20,10 @@ export function PeriodPicker({
   const [to, setTo] = useState(range.to);
 
   return (
-    <div className="flex flex-wrap items-center gap-2">
+    <div className={cx("flex items-center gap-2", custom && "flex-wrap")}>
       <select
         aria-label="Période"
-        className={cx(inputClass, "w-auto py-1.5")}
+        className={cx(inputClass, "h-9 w-auto py-0")}
         value={custom ? "custom" : period}
         disabled={disabled}
         onChange={(e) => {
@@ -50,15 +50,15 @@ export function PeriodPicker({
             onChange({ period: "custom", from, to });
           }}
         >
-          <input type="date" aria-label="Du" className={cx(inputClass, "w-auto py-1.5")} value={from} max={to} onChange={(e) => setFrom(e.target.value)} required />
+          <input type="date" aria-label="Du" className={cx(inputClass, "h-9 w-auto py-0")} value={from} max={to} onChange={(e) => setFrom(e.target.value)} required />
           <span className="text-sm text-slate-500">au</span>
-          <input type="date" aria-label="Au" className={cx(inputClass, "w-auto py-1.5")} value={to} min={from} onChange={(e) => setTo(e.target.value)} required />
+          <input type="date" aria-label="Au" className={cx(inputClass, "h-9 w-auto py-0")} value={to} min={from} onChange={(e) => setTo(e.target.value)} required />
           <button type="submit" className={buttonClass("secondary", "sm")}>
             Appliquer
           </button>
         </form>
       ) : (
-        <span className="text-sm text-slate-500 tabular">
+        <span className="inline-flex h-9 items-center whitespace-nowrap text-sm text-slate-500 tabular">
           {formatDateFr(range.from)} – {formatDateFr(range.to)}
         </span>
       )}
@@ -101,7 +101,7 @@ export function CampaignFilter({
     <div className="relative" ref={ref}>
       <button
         type="button"
-        className={cx(buttonClass("secondary", "sm"), "max-w-72 py-2")}
+        className={cx(buttonClass("secondary", "sm"), "h-9 max-w-72 py-0")}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(!open)}
