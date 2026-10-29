@@ -3,6 +3,7 @@
 import { ActionForm } from "@/components/admin/ActionForm";
 import { createBilanAction } from "@/app/admin/actions/bilans";
 import { formatDateFr, type DateRange } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import { buttonClass, Field, inputClass } from "../ui";
 
 export function GenerateBilan({
@@ -25,14 +26,14 @@ export function GenerateBilan({
   }
 
   const names = campaignIds.map((id) => campaigns.find((c) => c.id === id)?.name).filter((name): name is string => Boolean(name));
-  const defaultName = (names.length === 1 ? `Bilan — ${names[0]}` : `Bilan — ${campaignIds.length} campagnes`).slice(0, 120);
+  const defaultName = (names.length === 1 ? `Bilan - ${plainDashes(names[0])}` : `Bilan - ${campaignIds.length} campagnes`).slice(0, 120);
 
   return (
     <details className="relative">
       <summary className={`${buttonClass("secondary", "sm")} cursor-pointer list-none`}>Générer un bilan</summary>
       <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
         <p className="mb-2 text-xs text-slate-500">
-          {formatDateFr(range.from)} – {formatDateFr(range.to)} · {campaignIds.length} campagne{campaignIds.length > 1 ? "s" : ""}. Les dates ne bougeront plus.
+          {formatDateFr(range.from)} - {formatDateFr(range.to)} · {campaignIds.length} campagne{campaignIds.length > 1 ? "s" : ""}. Les dates ne bougeront plus.
         </p>
         <ActionForm action={createBilanAction} hidden={{ dashboardId, from: range.from, to: range.to }} submitLabel="Enregistrer le bilan">
           <Field label="Nom">

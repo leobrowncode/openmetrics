@@ -3,6 +3,7 @@ import { eq } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/ActionForm";
 import { ShareStateBadge } from "@/components/admin/status";
 import { Button, Card, CardHeader, EmptyState, Field, Notice, formatDateTime, inputClass } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { dashboards } from "@/server/db/schema";
@@ -76,7 +77,7 @@ export default async function SharePage(props: PageProps<"/admin/dashboards/[das
                     <div className="flex flex-wrap items-start justify-between gap-3">
                       <div>
                         <p className="font-medium text-slate-900">
-                          {link.label} <ShareStateBadge state={state} />
+                          {plainDashes(link.label)} <ShareStateBadge state={state} />
                         </p>
                         {link.bilanId && (
                           <p className="text-xs text-slate-600">Bilan : {bilanName.get(link.bilanId) ?? "introuvable"}</p>
@@ -125,7 +126,7 @@ export default async function SharePage(props: PageProps<"/admin/dashboards/[das
         <div className="p-5">
           <ActionForm action={createShareLinkAction} hidden={{ dashboardId: dashboard.id }} submitLabel="Générer le lien">
             <Field label="Destinataire / libellé" hint="Pour savoir qui détient ce lien (non visible par le client).">
-              <input name="label" required maxLength={120} className={inputClass} placeholder="Ex. Marie — Responsable communication" />
+              <input name="label" required maxLength={120} className={inputClass} placeholder="Ex. Marie - Responsable communication" />
             </Field>
             <ExpiryFields />
           </ActionForm>

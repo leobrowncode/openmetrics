@@ -56,6 +56,7 @@ export default async function ViewerPage(props: PageProps<"/share/[linkId]">) {
         title={bilan?.name ?? share.dashboard.name}
         subtitle={client?.name}
         locked={Boolean(bilan)}
+        dashboardId={share.dashboard.id}
       />
     </main>
   );

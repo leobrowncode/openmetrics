@@ -19,7 +19,7 @@ export async function ensureBootstrap(db: Db, options: { demo: boolean }): Promi
     .where(eq(dashboardTemplates.builtIn, true));
   if (templateCount === 0) {
     await db.insert(dashboardTemplates).values({
-      name: "Référence agence — 4 sections",
+      name: "Référence agence - 4 sections",
       description: "Investissements · Impressions et clics · CTR et CPC · Conversions (modèle Looker Studio de l'agence).",
       config: REFERENCE_TEMPLATE_CONFIG,
       builtIn: true,
@@ -95,7 +95,7 @@ export async function seedDemo(db: Db): Promise<void> {
     await db.insert(dashboards).values({
       id: demoIds.dashboards[index],
       clientId: client.id,
-      name: `${client.name} — Reporting Meta Ads`,
+      name: `${client.name} - Reporting Meta Ads`,
       config: template.config,
     });
   }

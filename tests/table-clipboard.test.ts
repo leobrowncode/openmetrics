@@ -26,7 +26,7 @@ describe("campaign table clipboard", () => {
     expect(matrix[1][1]).toMatch(/€/);
     expect(matrix[1][2]).toMatch(/%/);
     expect(matrix[2][0]).toBe("=formule & <campagne>");
-    expect(matrix[2][2]).toBe("—");
+    expect(matrix[2][2]).toBe("-");
     expect(matrix[3][0]).toBe("Total");
     expect(matrix.map((row) => row[1])).toEqual([
       "Dépenses",

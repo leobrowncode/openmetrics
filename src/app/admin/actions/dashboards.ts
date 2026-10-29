@@ -3,6 +3,7 @@
 import { and, eq } from "drizzle-orm";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
+import { chartColorsSchema } from "@/lib/chart-colors";
 import {
   CHART_STYLES,
   WIDGET_TYPES,
@@ -11,6 +12,7 @@ import {
   parseDashboardConfig,
   type DashboardConfig,
 } from "@/lib/dashboard-config";
+import { addSection, addWidget, deleteSection, deleteWidget, moveSection, moveWidget, renameSection } from "@/lib/dashboard-structure";
 import { isMetricKey } from "@/lib/metrics";
 import { isPeriodPreset } from "@/lib/periods";
 import { adAccounts, clients, dashboards, dashboardTemplates } from "@/server/db/schema";
@@ -29,14 +31,15 @@ async function saveConfig(db: Db, id: string, config: DashboardConfig) {
   revalidatePath(`/admin/dashboards/${id}`);
 }
 
-async function mutateConfig(formData: FormData, mutate: (config: DashboardConfig) => void): Promise<void> {
+async function mutateConfig(formData: FormData, mutate: (config: DashboardConfig) => void | boolean): Promise<boolean> {
   const { db, log } = await adminContext();
   const id = formString(formData, "dashboardId");
   const dashboard = await loadDashboard(db, id);
   const config = parseDashboardConfig(dashboard.config);
-  mutate(config);
+  if (mutate(config) === false) return false;
   await saveConfig(db, id, config);
   await log("dashboard.update_config", "dashboard", id);
+  return true;
 }
 
 export async function createDashboardAction(_prev: ActionState | null, formData: FormData): Promise<ActionState> {
@@ -107,20 +110,51 @@ export async function updateDashboardSettingsAction(_prev: ActionState | null, f
   config.compareToPreviousPeriod = formData.get("compare") === "on";
   config.viewer.allowPeriodChange = formData.get("allowPeriodChange") === "on";
   config.viewer.allowCampaignFilter = formData.get("allowCampaignFilter") === "on";
+  config.viewer.allowCustomize = formData.get("allowCustomize") === "on";
 
   await db
     .update(dashboards)
     .set({ name, adAccountIds: accountIds, config: dashboardConfigSchema.parse(config), updatedAt: new Date() })
     .where(eq(dashboards.id, id));
   await log("dashboard.update_settings", "dashboard", id);
-  revalidatePath(`/admin/dashboards/${id}`);
+  revalidatePath(`/admin/dashboards/${id}`, "layout");
+  revalidatePath("/admin/dashboards");
+  revalidatePath(`/admin/clients/${dashboard.clientId}`);
   return { ok: true, message: "Paramètres enregistrés." };
+}
+
+export async function renameDashboardAction(dashboardId: string, name: string): Promise<ActionState> {
+  const trimmed = name.trim();
+  if (trimmed.length < 2 || trimmed.length > 120) return { error: "Le nom doit contenir entre 2 et 120 caractères." };
+  const { db, log } = await adminContext();
+  const dashboard = await loadDashboard(db, dashboardId);
+  if (dashboard.name !== trimmed) {
+    await db.update(dashboards).set({ name: trimmed, updatedAt: new Date() }).where(eq(dashboards.id, dashboard.id));
+    await log("dashboard.rename", "dashboard", dashboard.id);
+  }
+  revalidatePath(`/admin/dashboards/${dashboard.id}`, "layout");
+  revalidatePath("/admin/dashboards");
+  revalidatePath(`/admin/clients/${dashboard.clientId}`);
+  return { ok: true };
+}
+
+export async function updateChartColorsAction(dashboardId: string, colors: string[]): Promise<ActionState> {
+  const parsed = chartColorsSchema.safeParse(colors);
+  if (!parsed.success) return { error: "Choisissez une couleur de la palette." };
+  const { db, log } = await adminContext();
+  const dashboard = await loadDashboard(db, dashboardId);
+  const config = parseDashboardConfig(dashboard.config);
+  if (config.chartColors[0] === parsed.data[0] && config.chartColors[1] === parsed.data[1]) return { ok: true };
+  config.chartColors = parsed.data;
+  await saveConfig(db, dashboard.id, config);
+  await log("dashboard.update_colors", "dashboard", dashboard.id);
+  return { ok: true };
 }
 
 export async function addSectionAction(formData: FormData): Promise<void> {
   const title = formString(formData, "title").slice(0, 120) || "Nouvelle section";
   await mutateConfig(formData, (c) => {
-    c.sections.push({ id: newId("sec"), title, widgets: [] });
+    addSection(c, { id: newId("sec"), title, widgets: [] });
   });
 }
 
@@ -129,28 +163,21 @@ export async function renameSectionAction(formData: FormData): Promise<void> {
   const title = formString(formData, "title").slice(0, 120);
   if (!title) return;
   await mutateConfig(formData, (c) => {
-    const section = c.sections.find((s) => s.id === sectionId);
-    if (section) section.title = title;
+    renameSection(c, sectionId, title);
   });
 }
 
 export async function deleteSectionAction(formData: FormData): Promise<void> {
   const sectionId = formString(formData, "sectionId");
   await mutateConfig(formData, (c) => {
-    c.sections = c.sections.filter((s) => s.id !== sectionId);
+    deleteSection(c, sectionId);
   });
-}
-
-function move<T>(list: T[], index: number, direction: number): void {
-  const target = index + direction;
-  if (index < 0 || target < 0 || target >= list.length) return;
-  [list[index], list[target]] = [list[target], list[index]];
 }
 
 export async function moveSectionAction(formData: FormData): Promise<void> {
   const sectionId = formString(formData, "sectionId");
   const direction = formString(formData, "direction") === "up" ? -1 : 1;
-  await mutateConfig(formData, (c) => move(c.sections, c.sections.findIndex((s) => s.id === sectionId), direction));
+  await mutateConfig(formData, (c) => moveSection(c, sectionId, direction));
 }
 
 export async function addWidgetAction(_prev: ActionState | null, formData: FormData): Promise<ActionState> {
@@ -162,32 +189,30 @@ export async function addWidgetAction(_prev: ActionState | null, formData: FormD
   if (!(WIDGET_TYPES as readonly string[]).includes(type)) return { error: "Type de widget invalide." };
   if (metrics.length === 0) return { error: "Choisissez au moins un indicateur." };
   if (type === "timeseries" && metrics.length > 2) return { error: "Un graphique temporel affiche 2 indicateurs au maximum." };
-  await mutateConfig(formData, (c) => {
-    const section = c.sections.find((s) => s.id === sectionId);
-    section?.widgets.push({
+  const added = await mutateConfig(formData, (c) =>
+    addWidget(c, sectionId, {
       id: newId("w"),
       type: type as (typeof WIDGET_TYPES)[number],
       metrics,
       title: title || undefined,
       chartStyle: type === "timeseries" && (CHART_STYLES as readonly string[]).includes(chartStyle) ? (chartStyle as (typeof CHART_STYLES)[number]) : undefined,
-    });
-  });
+    }),
+  );
+  if (!added) return { error: "Cette section contient déjà 12 widgets." };
   return { ok: true, message: "Widget ajouté." };
 }
 
 export async function deleteWidgetAction(formData: FormData): Promise<void> {
   const widgetId = formString(formData, "widgetId");
   await mutateConfig(formData, (c) => {
-    for (const s of c.sections) s.widgets = s.widgets.filter((w) => w.id !== widgetId);
+    deleteWidget(c, widgetId);
   });
 }
 
 export async function moveWidgetAction(formData: FormData): Promise<void> {
   const widgetId = formString(formData, "widgetId");
   const direction = formString(formData, "direction") === "up" ? -1 : 1;
-  await mutateConfig(formData, (c) => {
-    for (const s of c.sections) move(s.widgets, s.widgets.findIndex((w) => w.id === widgetId), direction);
-  });
+  await mutateConfig(formData, (c) => moveWidget(c, widgetId, direction));
 }
 
 export async function saveAsTemplateAction(_prev: ActionState | null, formData: FormData): Promise<ActionState> {

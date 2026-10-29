@@ -231,6 +231,16 @@ export const rateLimits = pgTable(
   (t) => [primaryKey({ columns: [t.key, t.windowStart] })],
 );
 
+/**
+ * One row (`id = default`) for instance-wide display choices.
+ * `auto` shows synthetic data until a real Meta account is attached.
+ */
+export const siteSettings = pgTable("site_settings", {
+  id: text("id").primaryKey().default("default"),
+  syntheticDisplay: text("synthetic_display", { enum: ["auto", "hide", "show"] }).notNull().default("auto"),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
 export const auditLog = pgTable(
   "audit_log",
   {

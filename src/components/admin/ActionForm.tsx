@@ -42,7 +42,7 @@ export function ShareUrlReveal({ url }: { url: string }) {
   const [copied, setCopied] = useState(false);
   return (
     <div className="space-y-2 rounded-lg border border-brand-100 bg-brand-50 p-4">
-      <p className="text-sm font-semibold text-brand-700">Lien privé généré — copiez-le maintenant</p>
+      <p className="text-sm font-semibold text-brand-700">Lien privé généré - copiez-le maintenant</p>
       <p className="text-xs text-slate-600">
         Ce lien ne sera plus jamais affiché (seule son empreinte est conservée). Toute personne qui le possède peut consulter ce dashboard
         jusqu&apos;à sa révocation ou son expiration.

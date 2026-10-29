@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavLink } from "@/components/admin/NavLink";
 import { cx } from "@/components/ui";
 
 export function DashboardTabs({ dashboardId }: { dashboardId: string }) {
@@ -16,9 +16,10 @@ export function DashboardTabs({ dashboardId }: { dashboardId: string }) {
   return (
     <nav className="flex gap-1" aria-label="Sections du dashboard">
       {tabs.map((t) => (
-        <Link
+        <NavLink
           key={t.href}
           href={t.href}
+          active={pathname === t.href}
           className={cx(
             "rounded-md px-3 py-1.5 text-sm font-medium",
             (t.href === base ? pathname === base : pathname === t.href || pathname.startsWith(`${t.href}/`))
@@ -27,7 +28,7 @@ export function DashboardTabs({ dashboardId }: { dashboardId: string }) {
           )}
         >
           {t.label}
-        </Link>
+        </NavLink>
       ))}
     </nav>
   );

@@ -27,27 +27,27 @@ interface DemoAccount extends MetaAdAccountInfo {
 export const DEMO_ACCOUNTS: DemoAccount[] = [
   {
     metaAccountId: "act_100000000000001",
-    name: "Association Horizon — Dons (démo)",
+    name: "Association Horizon - Dons (démo)",
     currency: "EUR",
     timezoneName: "Europe/Paris",
     accountStatus: 1,
     campaigns: [
-      { id: "120200000000000101", name: "FDA — Broad — Dons", objective: "OUTCOME_SALES", dailyBudget: 85, cpm: 7.5, ctrAll: 0.021, linkShare: 0.55, cvr: 0.018, basket: 210, start: "2025-01-01" },
-      { id: "120200000000000102", name: "FDA — Lookalike visiteurs 180j", objective: "OUTCOME_SALES", dailyBudget: 25, cpm: 9.8, ctrAll: 0.018, linkShare: 0.6, cvr: 0.022, basket: 240, start: "2025-01-01" },
-      { id: "120200000000000103", name: "Notoriété — Vidéo témoignages", objective: "OUTCOME_AWARENESS", dailyBudget: 30, cpm: 3.2, ctrAll: 0.009, linkShare: 0.3, cvr: 0.002, basket: 90, start: "2025-03-01" },
+      { id: "120200000000000101", name: "FDA - Broad - Dons", objective: "OUTCOME_SALES", dailyBudget: 85, cpm: 7.5, ctrAll: 0.021, linkShare: 0.55, cvr: 0.018, basket: 210, start: "2025-01-01" },
+      { id: "120200000000000102", name: "FDA - Lookalike visiteurs 180j", objective: "OUTCOME_SALES", dailyBudget: 25, cpm: 9.8, ctrAll: 0.018, linkShare: 0.6, cvr: 0.022, basket: 240, start: "2025-01-01" },
+      { id: "120200000000000103", name: "Notoriété - Vidéo témoignages", objective: "OUTCOME_AWARENESS", dailyBudget: 30, cpm: 3.2, ctrAll: 0.009, linkShare: 0.3, cvr: 0.002, basket: 90, start: "2025-03-01" },
     ],
   },
   {
     metaAccountId: "act_100000000000002",
-    name: "Maison Lumen — E-commerce (démo)",
+    name: "Maison Lumen - E-commerce (démo)",
     currency: "EUR",
     timezoneName: "Europe/Paris",
     accountStatus: 1,
     campaigns: [
-      { id: "120200000000000201", name: "Advantage+ Shopping — Catalogue", objective: "OUTCOME_SALES", dailyBudget: 140, cpm: 11.5, ctrAll: 0.024, linkShare: 0.65, cvr: 0.031, basket: 68, start: "2025-01-01" },
-      { id: "120200000000000202", name: "Retargeting — Paniers abandonnés", objective: "OUTCOME_SALES", dailyBudget: 35, cpm: 15.0, ctrAll: 0.032, linkShare: 0.7, cvr: 0.055, basket: 74, start: "2025-01-01" },
-      { id: "120200000000000203", name: "Prospection — Intérêts déco", objective: "OUTCOME_TRAFFIC", dailyBudget: 50, cpm: 6.4, ctrAll: 0.017, linkShare: 0.62, cvr: 0.008, basket: 61, start: "2025-02-15" },
-      { id: "120200000000000204", name: "Leads — Newsletter -10 %", objective: "OUTCOME_LEADS", dailyBudget: 20, cpm: 8.1, ctrAll: 0.02, linkShare: 0.5, cvr: 0.0, basket: 0, start: "2025-04-01" },
+      { id: "120200000000000201", name: "Advantage+ Shopping - Catalogue", objective: "OUTCOME_SALES", dailyBudget: 140, cpm: 11.5, ctrAll: 0.024, linkShare: 0.65, cvr: 0.031, basket: 68, start: "2025-01-01" },
+      { id: "120200000000000202", name: "Retargeting - Paniers abandonnés", objective: "OUTCOME_SALES", dailyBudget: 35, cpm: 15.0, ctrAll: 0.032, linkShare: 0.7, cvr: 0.055, basket: 74, start: "2025-01-01" },
+      { id: "120200000000000203", name: "Prospection - Intérêts déco", objective: "OUTCOME_TRAFFIC", dailyBudget: 50, cpm: 6.4, ctrAll: 0.017, linkShare: 0.62, cvr: 0.008, basket: 61, start: "2025-02-15" },
+      { id: "120200000000000204", name: "Leads - Newsletter -10 %", objective: "OUTCOME_LEADS", dailyBudget: 20, cpm: 8.1, ctrAll: 0.02, linkShare: 0.5, cvr: 0.0, basket: 0, start: "2025-04-01" },
     ],
   },
 ];
@@ -134,10 +134,48 @@ function dayRow(accountId: string, c: DemoCampaign, date: string): RawInsightRow
   };
 }
 
+function spareAccount(suffix: string, name: string, objective: string): DemoAccount {
+  return {
+    metaAccountId: `act_1000000000000${suffix}`,
+    name,
+    currency: "EUR",
+    timezoneName: "Europe/Paris",
+    accountStatus: 1,
+    campaigns: [
+      {
+        id: `1202000000000003${suffix}`,
+        name: `${name.replace(/ \(démo\)$/, "")} — principale`,
+        objective,
+        dailyBudget: 40,
+        cpm: 8,
+        ctrAll: 0.018,
+        linkShare: 0.55,
+        cvr: 0.012,
+        basket: 45,
+        start: "2025-06-01",
+      },
+    ],
+  };
+}
+
+/** Visible to the demo connection, but not seeded onto a client. */
+const UNASSIGNED_DEMO_ACCOUNTS: DemoAccount[] = [
+  spareAccount("11", "Atelier Nord — Trafic (démo)", "OUTCOME_TRAFFIC"),
+  spareAccount("12", "Boulangerie Martin — Catalogue (démo)", "OUTCOME_SALES"),
+  spareAccount("13", "Café des Arts — Notoriété (démo)", "OUTCOME_AWARENESS"),
+  spareAccount("14", "École du Regard — Leads (démo)", "OUTCOME_LEADS"),
+  spareAccount("15", "Le Rocher — Dons (démo)", "OUTCOME_SALES"),
+  spareAccount("16", "Librairie Page — Trafic (démo)", "OUTCOME_TRAFFIC"),
+  spareAccount("17", "Lumen Studio — Prospection (démo)", "OUTCOME_TRAFFIC"),
+  spareAccount("18", "Zéphyr Voyages — Catalogue (démo)", "OUTCOME_SALES"),
+];
+
+const DEMO_CATALOG = [...DEMO_ACCOUNTS, ...UNASSIGNED_DEMO_ACCOUNTS];
+
 export function createDemoSource(): InsightsSource {
   let calls = 0;
   const find = (id: string) => {
-    const account = DEMO_ACCOUNTS.find((a) => a.metaAccountId === id);
+    const account = DEMO_CATALOG.find((a) => a.metaAccountId === id);
     if (!account) throw new Error(`Unknown demo account ${id}`);
     return account;
   };
@@ -154,7 +192,7 @@ export function createDemoSource(): InsightsSource {
     },
     async listAdAccounts() {
       calls++;
-      return DEMO_ACCOUNTS.map(info);
+      return DEMO_CATALOG.map(info);
     },
     async getAdAccount(metaAccountId) {
       calls++;

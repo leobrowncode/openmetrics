@@ -1,11 +1,25 @@
 import "server-only";
 import { eq } from "drizzle-orm";
+import { syntheticAccountsVisible } from "@/lib/synthetic-display";
 import type { Db } from "../db/client";
 import { adAccounts, clients, dashboards, metaConnections } from "../db/schema";
 import { env } from "../env";
+import { getSyntheticDisplay, hasRealMetaAccount } from "../settings/synthetic";
 
 export function demoModeEnabled(): boolean {
   return env().DEMO_MODE === "true";
+}
+
+/**
+ * `disabled`: this instance is not a demo.
+ * `hidden`: demo mode is on, but synthetic numbers are switched off or a real Meta account is linked.
+ * `visible`: the public demo pages may list synthetic dashboards.
+ */
+export async function publicDemoStatus(db: Db): Promise<"disabled" | "hidden" | "visible"> {
+  if (!demoModeEnabled()) return "disabled";
+  const display = await getSyntheticDisplay(db);
+  const instanceHasRealAccount = display === "auto" ? await hasRealMetaAccount(db) : false;
+  return syntheticAccountsVisible({ display, instanceHasRealAccount }) ? "visible" : "hidden";
 }
 
 export interface PublicDemoDashboard {
@@ -21,7 +35,7 @@ export interface PublicDemoDashboard {
  * on the same client keeps the dashboard private.
  */
 export async function listPublicDemoDashboards(db: Db): Promise<PublicDemoDashboard[]> {
-  if (!demoModeEnabled()) return [];
+  if ((await publicDemoStatus(db)) !== "visible") return [];
 
   const rows = await db
     .select({

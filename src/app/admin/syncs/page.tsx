@@ -3,6 +3,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { SyncStatusBadge, isStale } from "@/components/admin/status";
 import { Badge, Card, CardHeader, PageHeader, formatDateTime } from "@/components/ui";
 import { formatDateFr } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { adAccounts, clients, syncRuns } from "@/server/db/schema";
@@ -14,17 +15,19 @@ const TRIGGER_LABELS = { cron: "Planifiée", manual: "Manuelle", backfill: "Impo
 export default async function SyncsPage() {
   await requireAdmin();
   const db = await getDb();
-  const accounts = await db
-    .select({ account: adAccounts, clientName: clients.name })
-    .from(adAccounts)
-    .innerJoin(clients, eq(clients.id, adAccounts.clientId))
-    .orderBy(clients.name, adAccounts.name);
-  const runs = await db
-    .select({ run: syncRuns, accountName: adAccounts.name })
-    .from(syncRuns)
-    .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
-    .orderBy(desc(syncRuns.startedAt))
-    .limit(100);
+  const [accounts, runs] = await Promise.all([
+    db
+      .select({ account: adAccounts, clientName: clients.name })
+      .from(adAccounts)
+      .innerJoin(clients, eq(clients.id, adAccounts.clientId))
+      .orderBy(clients.name, adAccounts.name),
+    db
+      .select({ run: syncRuns, accountName: adAccounts.name })
+      .from(syncRuns)
+      .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
+      .orderBy(desc(syncRuns.startedAt))
+      .limit(100),
+  ]);
 
   return (
     <>
@@ -48,8 +51,8 @@ export default async function SyncsPage() {
               {accounts.map(({ account, clientName }) => (
                 <tr key={account.id} className="border-b border-slate-100 last:border-0 align-top">
                   <td className="px-5 py-3">
-                    <p className="font-medium text-slate-900">{account.name}</p>
-                    <p className="text-xs text-slate-500">{clientName}</p>
+                    <p className="font-medium text-slate-900">{plainDashes(account.name)}</p>
+                    <p className="text-xs text-slate-500">{plainDashes(clientName)}</p>
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex flex-wrap gap-1">

@@ -38,7 +38,7 @@ export async function GET(request: NextRequest) {
     const db = await getDb();
     const id = await saveMetaConnection(db, {
       connectionId: pending.c,
-      label: owner ? `Meta — ${owner}` : "Connexion Meta",
+      label: owner ? `Meta - ${owner}` : "Connexion Meta",
       token: accessToken,
       scopes,
       expiresAt: info.expiresAt,

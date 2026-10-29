@@ -13,13 +13,12 @@ import {
   YAxis,
 } from "recharts";
 import { presentMetric, type ConversionNaming } from "@/lib/conversion-actions";
+import { DEFAULT_CHART_COLORS } from "@/lib/chart-colors";
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
 import type { DateRange } from "@/lib/periods";
 import { bucketSeries, formatBucket, pickGranularity } from "./aggregate";
 import { CopyTableButton } from "./CopyTableButton";
 import { seriesTableMatrix } from "./table-clipboard";
-
-const COLORS = ["#2753d8", "#f59e0b", "#10b981", "#ef4444", "#8b5cf6"];
 
 export function TimeSeriesChart({
   title,
@@ -29,6 +28,7 @@ export function TimeSeriesChart({
   currency,
   chartStyle = "line",
   naming = null,
+  colors = DEFAULT_CHART_COLORS,
 }: {
   title?: string;
   metrics: MetricKey[];
@@ -37,6 +37,7 @@ export function TimeSeriesChart({
   currency: string;
   chartStyle?: "line" | "bar" | "area";
   naming?: ConversionNaming | null;
+  colors?: readonly string[];
 }) {
   const granularity = pickGranularity(range);
   const buckets = bucketSeries(series, range, granularity);
@@ -81,7 +82,7 @@ export function TimeSeriesChart({
           {metrics.length > 1 && <Legend formatter={(value) => presentMetric(value as MetricKey, naming).label} wrapperStyle={{ fontSize: 12 }} />}
           {metrics.map((key, i) => {
             const axis = dualAxis && i === 1 ? "right" : "left";
-            const color = COLORS[i % COLORS.length];
+            const color = colors[i % colors.length] ?? DEFAULT_CHART_COLORS[i % DEFAULT_CHART_COLORS.length];
             const style = i === 0 ? chartStyle : "line";
             if (style === "bar") return <Bar key={key} isAnimationActive={false} yAxisId={axis} dataKey={key} fill={color} radius={[3, 3, 0, 0]} maxBarSize={28} />;
             if (style === "area")

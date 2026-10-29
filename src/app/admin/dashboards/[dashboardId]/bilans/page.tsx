@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { Button, Card, CardHeader, EmptyState, formatDateTime } from "@/components/ui";
 import { formatDateFr } from "@/lib/periods";
+import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { listBilans } from "@/server/dashboards/bilans";
 import { getDb } from "@/server/db/client";
@@ -35,10 +36,10 @@ export default async function BilansPage(props: PageProps<"/admin/dashboards/[da
             <li key={bilan.id} className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
               <div>
                 <Link href={`/admin/dashboards/${dashboardId}/bilans/${bilan.id}`} className="font-medium text-slate-900 hover:underline">
-                  {bilan.name}
+                  {plainDashes(bilan.name)}
                 </Link>
                 <p className="text-xs text-slate-500">
-                  {formatDateFr(bilan.rangeFrom)} – {formatDateFr(bilan.rangeTo)} · {bilan.campaignIds.length} campagne
+                  {formatDateFr(bilan.rangeFrom)} - {formatDateFr(bilan.rangeTo)} · {bilan.campaignIds.length} campagne
                   {bilan.campaignIds.length > 1 ? "s" : ""} · créé le {formatDateTime(bilan.createdAt)}
                 </p>
               </div>

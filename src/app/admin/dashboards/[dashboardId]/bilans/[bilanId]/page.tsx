@@ -32,7 +32,7 @@ export default async function BilanPage(props: PageProps<"/admin/dashboards/[das
         <div className="p-5">
           <ActionForm action={createShareLinkAction} hidden={{ dashboardId, bilanId }} submitLabel="Générer le lien">
             <Field label="Destinataire / libellé" hint="Pour savoir qui détient ce lien (non visible par le client).">
-              <input name="label" required maxLength={120} className={inputClass} placeholder="Ex. Marie — bilan campagnes" />
+              <input name="label" required maxLength={120} className={inputClass} placeholder="Ex. Marie - bilan campagnes" />
             </Field>
             <Field label="Expiration">
               <select name="expiry" defaultValue="90" className={inputClass}>
