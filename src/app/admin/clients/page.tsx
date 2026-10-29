@@ -10,8 +10,12 @@ import { createClientAction } from "../actions/clients";
 export default async function ClientsPage() {
   await requireAdmin();
   const db = await getDb();
-  const [accountCounts, dashboardCounts] = await Promise.all([accountCountsByClient(db), dashboardCountsByClient(db)]);
-  const rows = (await db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name)).map((c) => ({
+  const [accountCounts, dashboardCounts, clientRows] = await Promise.all([
+    accountCountsByClient(db),
+    dashboardCountsByClient(db),
+    db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name),
+  ]);
+  const rows = clientRows.map((c) => ({
     ...c,
     accounts: accountCounts.get(c.id) ?? 0,
     dashboards: dashboardCounts.get(c.id) ?? 0,

@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import { desc, eq } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/ActionForm";
@@ -28,26 +29,12 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) notFound();
 
-  const accounts = await db.select().from(adAccounts).where(eq(adAccounts.clientId, clientId)).orderBy(adAccounts.name);
-  const clientDashboards = await db.select().from(dashboards).where(eq(dashboards.clientId, clientId)).orderBy(desc(dashboards.updatedAt));
-  const templates = await db.select().from(dashboardTemplates).orderBy(desc(dashboardTemplates.builtIn), dashboardTemplates.name);
-  const connections = await db.select().from(metaConnections).where(eq(metaConnections.status, "active"));
-  const linked = new Set((await db.select({ id: adAccounts.metaAccountId }).from(adAccounts)).map((a) => a.id));
-
-  const available: Array<{ connectionId: string; connectionLabel: string; accounts: MetaAdAccountInfo[]; error?: string }> = [];
-  for (const connection of connections) {
-    try {
-      const list = await defaultSourceFactory(connection).listAdAccounts();
-      available.push({ connectionId: connection.id, connectionLabel: connection.label, accounts: list.filter((a) => !linked.has(a.metaAccountId)) });
-    } catch (error) {
-      available.push({
-        connectionId: connection.id,
-        connectionLabel: connection.label,
-        accounts: [],
-        error: error instanceof MetaApiError ? describeMetaError(error) : "Liste des comptes indisponible.",
-      });
-    }
-  }
+  const [accounts, clientDashboards, templates, connections] = await Promise.all([
+    db.select().from(adAccounts).where(eq(adAccounts.clientId, clientId)).orderBy(adAccounts.name),
+    db.select().from(dashboards).where(eq(dashboards.clientId, clientId)).orderBy(desc(dashboards.updatedAt)),
+    db.select().from(dashboardTemplates).orderBy(desc(dashboardTemplates.builtIn), dashboardTemplates.name),
+    db.select().from(metaConnections).where(eq(metaConnections.status, "active")),
+  ]);
   const observed = new Map(await Promise.all(accounts.map(async (a) => [a.id, await observedActionTypes(db, a.id)] as const)));
 
   return (
@@ -151,28 +138,9 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
                 Aucune connexion Meta active. <Link className="underline" href="/admin/connections">Ajouter une connexion</Link>
               </Notice>
             ) : (
-              <div className="space-y-4">
-                {available.map((group) => (
-                  <div key={group.connectionId}>
-                    <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.connectionLabel}</p>
-                    {group.error ? (
-                      <Notice tone="red">{group.error}</Notice>
-                    ) : group.accounts.length === 0 ? (
-                      <p className="text-sm text-slate-500">Tous les comptes accessibles sont déjà rattachés à un client.</p>
-                    ) : (
-                      <ActionForm action={addAdAccountAction} hidden={{ clientId: client.id, connectionId: group.connectionId }} submitLabel="Rattacher ce compte" className="flex flex-wrap items-start gap-2 space-y-0">
-                        <select name="metaAccountId" className={`${inputClass} w-auto`} aria-label="Compte publicitaire">
-                          {group.accounts.map((a) => (
-                            <option key={a.metaAccountId} value={a.metaAccountId}>
-                              {a.name} ({a.metaAccountId}, {a.currency})
-                            </option>
-                          ))}
-                        </select>
-                      </ActionForm>
-                    )}
-                  </div>
-                ))}
-              </div>
+              <Suspense fallback={<p className="text-sm text-slate-500">Recherche des comptes Meta…</p>}>
+                <AvailableAccounts clientId={client.id} connections={connections} />
+              </Suspense>
             )}
           </div>
         </Card>
@@ -220,5 +188,61 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
         </Card>
       </div>
     </>
+  );
+}
+
+async function AvailableAccounts({
+  clientId,
+  connections,
+}: {
+  clientId: string;
+  connections: Array<typeof metaConnections.$inferSelect>;
+}) {
+  const db = await getDb();
+  const linked = new Set((await db.select({ id: adAccounts.metaAccountId }).from(adAccounts)).map((account) => account.id));
+  const available = await Promise.all(
+    connections.map(async (connection) => {
+      try {
+        const list = await defaultSourceFactory(connection).listAdAccounts();
+        return { connectionId: connection.id, connectionLabel: connection.label, accounts: list.filter((account) => !linked.has(account.metaAccountId)) };
+      } catch (error) {
+        return {
+          connectionId: connection.id,
+          connectionLabel: connection.label,
+          accounts: [] as MetaAdAccountInfo[],
+          error: error instanceof MetaApiError ? describeMetaError(error) : "Liste des comptes indisponible.",
+        };
+      }
+    }),
+  );
+
+  return (
+    <div className="space-y-4">
+      {available.map((group) => (
+        <div key={group.connectionId}>
+          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-slate-500">{group.connectionLabel}</p>
+          {group.error ? (
+            <Notice tone="red">{group.error}</Notice>
+          ) : group.accounts.length === 0 ? (
+            <p className="text-sm text-slate-500">Tous les comptes accessibles sont déjà rattachés à un client.</p>
+          ) : (
+            <ActionForm
+              action={addAdAccountAction}
+              hidden={{ clientId, connectionId: group.connectionId }}
+              submitLabel="Rattacher ce compte"
+              className="flex flex-wrap items-start gap-2 space-y-0"
+            >
+              <select name="metaAccountId" className={`${inputClass} w-auto`} aria-label="Compte publicitaire">
+                {group.accounts.map((account) => (
+                  <option key={account.metaAccountId} value={account.metaAccountId}>
+                    {account.name} ({account.metaAccountId}, {account.currency})
+                  </option>
+                ))}
+              </select>
+            </ActionForm>
+          )}
+        </div>
+      ))}
+    </div>
   );
 }
