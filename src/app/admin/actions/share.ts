@@ -39,7 +39,7 @@ export async function createShareLinkAction(_prev: ActionState | null, formData:
   const { link, token } = await createShareLink(db, { dashboardId, label, expiresAt });
   await log("share_link.create", "share_link", link.id, { dashboardId, expiresAt: expiresAt?.toISOString() ?? null });
   revalidatePath(`/admin/dashboards/${dashboardId}/share`);
-  return { ok: true, shareUrl: shareUrl(await appOrigin(), token) };
+  return { ok: true, shareUrl: shareUrl(await appOrigin(), token), shareLinkId: link.id };
 }
 
 export async function renewShareLinkAction(_prev: ActionState | null, formData: FormData): Promise<ActionState> {
@@ -52,7 +52,7 @@ export async function renewShareLinkAction(_prev: ActionState | null, formData: 
   if (!renewed) return { error: "Lien introuvable." };
   await log("share_link.renew", "share_link", renewed.link.id, { replaces: linkId });
   revalidatePath(`/admin/dashboards/${dashboardId}/share`);
-  return { ok: true, shareUrl: shareUrl(await appOrigin(), renewed.token) };
+  return { ok: true, shareUrl: shareUrl(await appOrigin(), renewed.token), shareLinkId: renewed.link.id };
 }
 
 export async function revokeShareLinkAction(formData: FormData): Promise<void> {
