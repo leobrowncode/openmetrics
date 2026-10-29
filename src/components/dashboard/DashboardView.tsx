@@ -136,6 +136,7 @@ export function DashboardView({
             <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{pageTitle}</h1>
           </div>
         )}
+        {locked && !showIdentity && <h2 className="text-lg font-semibold tracking-tight text-slate-900">{pageTitle}</h2>}
         <div className="flex flex-wrap items-center justify-between gap-x-6 gap-y-3">
           <div className="min-w-0 space-y-1">
             <p className="text-sm text-slate-500">

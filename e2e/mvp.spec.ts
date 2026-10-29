@@ -192,7 +192,7 @@ test("bilan freezes the chosen campaigns and period", async ({ page, browser }) 
   expect(json.query.period).toBe("custom");
   expect(json.query.campaignIds).not.toContain("1");
   expect(json.data.byCampaign).toHaveLength(1);
-  expect(json.data.byCampaign[0].name).toBe("FDA — Broad — Dons");
+  expect(json.data.byCampaign[0].name).toBe("FDA - Broad - Dons");
 });
 
 test("malformed or missing tokens are rejected", async ({ browser }) => {
