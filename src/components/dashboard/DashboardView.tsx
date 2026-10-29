@@ -4,8 +4,9 @@ import { useState, useTransition } from "react";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
 import { formatDateFr } from "@/lib/periods";
-import { Notice, formatDateTime } from "../ui";
+import { Notice, cx, formatDateTime } from "../ui";
 import { CampaignTable } from "./CampaignTable";
+import { ChartColorEditor } from "./ChartColorEditor";
 import { CampaignFilter, PeriodPicker } from "./Filters";
 import { KpiCards } from "./KpiCards";
 import { TimeSeriesChart } from "./TimeSeriesChart";
@@ -15,6 +16,7 @@ export function DashboardView({
   initial,
   dataUrl,
   mode,
+  dashboardId,
   title,
   subtitle,
 }: {
@@ -22,12 +24,15 @@ export function DashboardView({
   initial: DashboardPayload;
   dataUrl: string;
   mode: "viewer" | "admin";
+  dashboardId?: string;
   title: string;
   subtitle?: string;
 }) {
   const [payload, setPayload] = useState(initial);
+  const [chartColors, setChartColors] = useState<string[]>(() => [...config.chartColors]);
   const [error, setError] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
+  const showIdentity = mode !== "admin";
   const { data, query } = payload;
   const canChangePeriod = mode === "admin" || config.viewer.allowPeriodChange;
   const canFilter = mode === "admin" || config.viewer.allowCampaignFilter;
@@ -73,6 +78,7 @@ export function DashboardView({
             range={data.range}
             currency={data.currency}
             chartStyle={widget.chartStyle}
+            colors={chartColors}
           />
         );
       case "campaign_table":
@@ -92,14 +98,18 @@ export function DashboardView({
     <div className="mx-auto w-full max-w-7xl space-y-6">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          {subtitle && <p className="text-sm font-medium text-brand-600">{subtitle}</p>}
-          <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
-          <p className="mt-1 text-sm text-slate-500">
+          {showIdentity && (
+            <>
+              {subtitle && <p className="text-sm font-medium text-brand-600">{subtitle}</p>}
+              <h1 className="text-2xl font-semibold tracking-tight text-slate-900">{title}</h1>
+            </>
+          )}
+          <p className={cx("text-sm text-slate-500", showIdentity && "mt-1")}>
             Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
             {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
           </p>
         </div>
-        <div className="flex flex-wrap items-center gap-2" aria-busy={pending}>
+        <div className="relative flex flex-wrap items-center gap-2" aria-busy={pending}>
           {canChangePeriod ? (
             <PeriodPicker
               key={`${query.period}:${query.range.from}:${query.range.to}`}
@@ -115,6 +125,9 @@ export function DashboardView({
           )}
           {canFilter && data.campaigns.length > 0 && (
             <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
+          )}
+          {mode === "admin" && dashboardId && (
+            <ChartColorEditor dashboardId={dashboardId} initialColors={config.chartColors} onColorsChange={setChartColors} />
           )}
         </div>
       </header>

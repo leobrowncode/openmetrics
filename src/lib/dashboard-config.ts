@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { DEFAULT_CHART_COLORS, chartColorsSchema } from "./chart-colors";
 import { METRIC_KEYS, type MetricKey } from "./metrics";
 import { PERIOD_PRESETS } from "./periods";
 
@@ -33,6 +34,8 @@ export const dashboardConfigSchema = z.object({
   version: z.literal(1),
   defaultPeriod: z.enum(PERIOD_PRESETS),
   compareToPreviousPeriod: z.boolean(),
+  /** Two series colors, stored on this dashboard only. */
+  chartColors: chartColorsSchema,
   viewer: z.object({
     allowPeriodChange: z.boolean(),
     allowCampaignFilter: z.boolean(),
@@ -59,6 +62,7 @@ export const REFERENCE_TEMPLATE_CONFIG: DashboardConfig = {
   version: 1,
   defaultPeriod: "last_30_days",
   compareToPreviousPeriod: true,
+  chartColors: [DEFAULT_CHART_COLORS[0], DEFAULT_CHART_COLORS[1]],
   viewer: { allowPeriodChange: true, allowCampaignFilter: true },
   sections: [
     {

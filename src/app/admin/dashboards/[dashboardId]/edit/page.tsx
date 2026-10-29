@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { eq } from "drizzle-orm";
 import { ActionForm } from "@/components/admin/ActionForm";
+import { ChartColorEditor } from "@/components/dashboard/ChartColorEditor";
 import { Button, Card, CardHeader, Field, inputClass } from "@/components/ui";
 import { CHART_STYLES, WIDGET_TYPE_LABELS, WIDGET_TYPES, parseDashboardConfig } from "@/lib/dashboard-config";
 import { METRIC_KEYS, getMetric } from "@/lib/metrics";
@@ -151,6 +152,12 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
       </div>
 
       <div className="space-y-6">
+        <Card>
+          <CardHeader title="Couleurs des courbes" description="Enregistrées pour ce dashboard uniquement." />
+          <div className="p-5">
+            <ChartColorEditor dashboardId={dashboard.id} initialColors={config.chartColors} variant="panel" />
+          </div>
+        </Card>
         <Card>
           <CardHeader title="Paramètres" />
           <div className="p-5">
