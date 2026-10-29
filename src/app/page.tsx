@@ -38,7 +38,7 @@ export default async function Home() {
       />
       {hidden ? (
         <Notice tone="blue" title="Données de démonstration masquées">
-          Les chiffres synthétiques ne sont plus affichés. Un compte Meta réel est relié, ou l&apos;affichage a été désactivé dans Connexions Meta.
+          Les clients fictifs, leurs dashboards et leurs chiffres ne sont plus affichés. Un compte Meta réel est relié, ou l&apos;affichage a été désactivé dans Connexions Meta.
         </Notice>
       ) : (
         <Notice tone="blue" title="Données de démonstration">

@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { requireAdmin } from "@/server/auth/admin";
+import { getDb } from "@/server/db/client";
+import { purgeSyntheticDataIfReady } from "@/server/settings/synthetic-purge";
 import { logoutAction } from "../login/actions";
 import { AdminNav } from "./AdminNav";
 
@@ -8,6 +10,9 @@ export const metadata: Metadata = { title: "Admin — OpenMetrics", robots: { in
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const admin = await requireAdmin();
+  await purgeSyntheticDataIfReady(await getDb()).catch((error) => {
+    console.error("[synthetic] purge failed", error);
+  });
   return (
     <div className="flex min-h-screen flex-1 flex-col">
       <header className="border-b border-slate-200 bg-white">
