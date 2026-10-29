@@ -5,7 +5,8 @@ import { Notice } from "@/components/ui";
 import { parseDashboardConfig } from "@/lib/dashboard-config";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { dashboards } from "@/server/db/schema";
+import { plainDashes } from "@/lib/text";
+import { clients, dashboards } from "@/server/db/schema";
 import { loadDashboardPayload } from "@/server/dashboards/query";
 
 export default async function DashboardPreviewPage(props: PageProps<"/admin/dashboards/[dashboardId]">) {
@@ -14,6 +15,7 @@ export default async function DashboardPreviewPage(props: PageProps<"/admin/dash
   const db = await getDb();
   const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId));
   if (!dashboard) notFound();
+  const [client] = await db.select({ name: clients.name }).from(clients).where(eq(clients.id, dashboard.clientId));
 
   const searchParams = await props.searchParams;
   const params = new URLSearchParams();
@@ -31,7 +33,8 @@ export default async function DashboardPreviewPage(props: PageProps<"/admin/dash
         dataUrl={`/admin/dashboards/${dashboard.id}/data`}
         mode="admin"
         dashboardId={dashboard.id}
-        title={dashboard.name}
+        title={plainDashes(dashboard.name)}
+        subtitle={client?.name ? plainDashes(client.name) : undefined}
       />
     </div>
   );

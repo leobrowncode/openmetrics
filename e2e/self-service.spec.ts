@@ -94,3 +94,74 @@ test("team: add an admin, who changes their password, then lose access when remo
   await other.goto("/admin/clients");
   await expect(other).toHaveURL(/\/login$/);
 });
+
+test("new client offers the Meta accounts already connected, in alphabetical order", async ({ page }) => {
+  await login(page);
+  await page.goto("/admin/clients");
+  const list = page.getByRole("listbox", { name: "Comptes publicitaires disponibles" });
+  await expect(list.getByRole("option")).toHaveCount(8);
+  const names = await list.getByRole("option").allInnerTexts();
+  expect(names.map((name) => name.split("\n")[0])).toEqual([
+    "Atelier Nord — Trafic (démo)",
+    "Boulangerie Martin — Catalogue (démo)",
+    "Café des Arts — Notoriété (démo)",
+    "École du Regard — Leads (démo)",
+    "Le Rocher — Dons (démo)",
+    "Librairie Page — Trafic (démo)",
+    "Lumen Studio — Prospection (démo)",
+    "Zéphyr Voyages — Catalogue (démo)",
+  ]);
+
+  await page.getByRole("combobox", { name: "Rechercher un compte" }).fill("l");
+  await expect(list.getByRole("option")).toHaveCount(3);
+  await expect(list.getByRole("option").nth(0)).toContainText("Le Rocher");
+  await expect(list.getByRole("option").nth(1)).toContainText("Librairie Page");
+  await expect(list.getByRole("option").nth(2)).toContainText("Lumen Studio");
+  await expect(page.getByText("3 compte(s) commençant par « l »")).toBeVisible();
+
+  await list.getByRole("option", { name: /Le Rocher/ }).click();
+  await expect(page.getByLabel("Nom du client")).toHaveValue("Le Rocher");
+  await page.getByRole("button", { name: "Effacer la sélection" }).click();
+  await expect(page.getByLabel("Nom du client")).toHaveValue("");
+
+  await page.getByLabel("Nom du client").fill("Client sans compte");
+  await page.getByRole("button", { name: "Créer le client" }).click();
+  await expect(page.getByRole("heading", { name: "Client sans compte" })).toBeVisible();
+  await expect(page.getByRole("listbox", { name: "Comptes publicitaires disponibles" }).getByRole("option", { name: /Le Rocher/ })).toBeVisible();
+});
+
+test("a model can be created, a viewer can rearrange the dashboard, and synthetic data can be hidden", async ({ page }) => {
+  await page.goto("/");
+  await page.getByRole("link", { name: "Ouvrir le dashboard" }).first().click();
+  await expect(page.getByRole("heading", { name: "Investissements", exact: true })).toBeVisible();
+  await page.getByRole("button", { name: "Personnaliser" }).click();
+  await page.getByRole("checkbox", { name: "Investissements" }).uncheck();
+  await expect(page.getByRole("heading", { name: "Investissements", exact: true })).toHaveCount(0);
+  await page.reload();
+  await expect(page.getByRole("heading", { name: "Investissements", exact: true })).toHaveCount(0);
+  await page.getByRole("button", { name: "Personnaliser" }).click();
+  await page.getByRole("button", { name: "Réinitialiser" }).click();
+  await expect(page.getByRole("heading", { name: "Investissements", exact: true })).toBeVisible();
+
+  await login(page);
+  await page.goto("/admin/templates");
+  await page.getByLabel("Nom du modèle").fill("E2E modèle");
+  await page.getByRole("button", { name: "Créer le modèle" }).click();
+  await expect(page.getByRole("heading", { name: "E2E modèle" })).toBeVisible();
+  await page.getByPlaceholder("Titre de la nouvelle section").fill("Bloc e2e");
+  await page.getByRole("button", { name: "Ajouter une section" }).click();
+  await expect(page.getByLabel("Titre de section").last()).toHaveValue("Bloc e2e");
+
+  await page.goto("/admin/connections");
+  await page.getByLabel("Données synthétiques sur le site").selectOption("hide");
+  await page.getByRole("button", { name: "Enregistrer l'affichage" }).click();
+  await expect(page.getByText("Les données synthétiques sont masquées sur tout le site.")).toBeVisible();
+  await page.goto("/");
+  await expect(page.getByText("Les données de démonstration sont masquées.")).toBeVisible();
+  await expect(page.getByRole("link", { name: "Ouvrir le dashboard" })).toHaveCount(0);
+
+  await page.goto("/admin/connections");
+  await page.getByLabel("Données synthétiques sur le site").selectOption("auto");
+  await page.getByRole("button", { name: "Enregistrer l'affichage" }).click();
+  await expect(page.getByText("tant qu'aucun compte Meta réel n'est relié.")).toBeVisible();
+});

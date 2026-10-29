@@ -8,8 +8,11 @@ import { accountCountsByConnection } from "@/server/admin/counts";
 import { metaConnections } from "@/server/db/schema";
 import { metaOAuthConfig } from "@/server/meta/connections";
 import { META_OAUTH_PATH, META_OAUTH_RESULTS, metaRedirectUri, type MetaOAuthResult } from "@/server/meta/oauth-flow";
+import { getSyntheticDisplay, hasRealMetaAccount } from "@/server/settings/synthetic";
+import { syntheticAccountsVisible } from "@/lib/synthetic-display";
 import { appOrigin } from "../actions/context";
 import { createConnectionAction, deleteConnectionAction, replaceTokenAction, testConnectionAction } from "../actions/connections";
+import { setSyntheticDisplayAction } from "../actions/settings";
 
 export default async function ConnectionsPage({ searchParams }: PageProps<"/admin/connections">) {
   await requireAdmin();
@@ -19,6 +22,21 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/admi
     connection,
     accounts: accountCounts.get(connection.id) ?? 0,
   }));
+
+  const syntheticDisplay = await getSyntheticDisplay(db);
+  const hasRealAccount = syntheticDisplay === "auto" ? await hasRealMetaAccount(db) : false;
+  const syntheticVisible = syntheticAccountsVisible({
+    display: syntheticDisplay,
+    instanceHasRealAccount: syntheticDisplay === "auto" && hasRealAccount,
+  });
+  const syntheticStatus =
+    syntheticDisplay === "hide"
+      ? "Les données synthétiques sont masquées sur tout le site."
+      : syntheticDisplay === "show"
+        ? "Les données synthétiques restent visibles. Un client qui a aussi un compte Meta réel n'affiche plus ses comptes de démonstration."
+        : hasRealAccount
+          ? "Un compte Meta réel est relié : les données synthétiques sont masquées."
+          : "Les données synthétiques sont visibles tant qu'aucun compte Meta réel n'est relié.";
 
   const oauthEnabled = metaOAuthConfig() !== null;
   const redirectUri = metaRedirectUri(await appOrigin());
@@ -36,6 +54,24 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/admi
           <Notice tone={result.tone}>{result.text}</Notice>
         </div>
       )}
+      <Card className="mb-6">
+        <CardHeader
+          title="Données synthétiques"
+          description="Les chiffres de démonstration servent à parcourir le site avant une connexion Meta. Ils ne viennent pas de Meta."
+        />
+        <div className="space-y-4 p-5">
+          <Notice tone={syntheticVisible ? "amber" : "blue"}>{syntheticStatus}</Notice>
+          <ActionForm action={setSyntheticDisplayAction} submitLabel="Enregistrer l'affichage">
+            <Field label="Données synthétiques sur le site">
+              <select name="syntheticDisplay" defaultValue={syntheticDisplay} className={inputClass} aria-label="Données synthétiques sur le site">
+                <option value="auto">Automatique — masquer dès qu&apos;un compte Meta réel est relié</option>
+                <option value="hide">Masquer — ne plus les afficher, même sans compte Meta</option>
+                <option value="show">Afficher — les garder visibles sur les clients sans compte réel</option>
+              </select>
+            </Field>
+          </ActionForm>
+        </div>
+      </Card>
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="space-y-4 lg:col-span-2">
           {connections.map(({ connection, accounts }) => (

@@ -53,6 +53,13 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
     await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
   }
   await expect(page.getByText("Dernière actualisation")).toBeVisible();
+  const periodBox = await page.getByLabel("Période").boundingBox();
+  const campaignBox = await page.getByRole("button", { name: "Toutes les campagnes" }).boundingBox();
+  expect(periodBox && campaignBox).toBeTruthy();
+  const center = (box: { y: number; height: number }) => box.y + box.height / 2;
+  expect(Math.abs(center(periodBox!) - center(campaignBox!))).toBeLessThan(3);
+  expect(Math.abs(periodBox!.height - campaignBox!.height)).toBeLessThan(2);
+  expect(campaignBox!.x).toBeGreaterThan(periodBox!.x + periodBox!.width);
   const spend = await page.getByTestId("kpi-spend").first().innerText();
   expect(spend).toMatch(/€/);
   const tableTotal = page.locator("tfoot td").nth(1);

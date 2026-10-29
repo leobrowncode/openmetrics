@@ -3,13 +3,22 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { currentAdmin } from "@/server/auth/admin";
 import { DEMO_ADMIN_EMAIL, DEMO_ADMIN_PASSWORD } from "@/server/db/bootstrap";
-import { demoModeEnabled } from "@/server/demo/public-demo";
+import { demoModeEnabled, publicDemoStatus } from "@/server/demo/public-demo";
+import { getDb } from "@/server/db/client";
 import { LoginForm } from "./LoginForm";
 
 export const metadata: Metadata = { title: "Connexion - OpenMetrics" };
 
 export default async function LoginPage() {
   if (await currentAdmin()) redirect("/admin");
+  let demoHome = false;
+  if (demoModeEnabled()) {
+    try {
+      demoHome = (await publicDemoStatus(await getDb())) === "visible";
+    } catch {
+      demoHome = false;
+    }
+  }
   return (
     <main className="flex flex-1 items-center justify-center p-6">
       <div className="w-full max-w-sm">
@@ -21,10 +30,15 @@ export default async function LoginPage() {
         <LoginForm />
         {demoModeEnabled() && (
           <p className="mt-4 text-center text-xs text-slate-500">
-            Démo : {DEMO_ADMIN_EMAIL} / {DEMO_ADMIN_PASSWORD}.{" "}
-            <Link href="/" className="text-brand-700 hover:underline">
-              Retour aux dashboards
-            </Link>
+            Démo : {DEMO_ADMIN_EMAIL} / {DEMO_ADMIN_PASSWORD}.
+            {demoHome && (
+              <>
+                {" "}
+                <Link href="/" className="text-brand-700 hover:underline">
+                  Retour aux dashboards
+                </Link>
+              </>
+            )}
           </p>
         )}
       </div>

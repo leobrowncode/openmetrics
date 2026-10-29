@@ -10,17 +10,19 @@ import { clients, dashboards } from "@/server/db/schema";
 export default async function DashboardsPage() {
   await requireAdmin();
   const db = await getDb();
-  const rows = await db
-    .select({
-      id: dashboards.id,
-      name: dashboards.name,
-      clientName: clients.name,
-      updatedAt: dashboards.updatedAt,
-    })
-    .from(dashboards)
-    .innerJoin(clients, eq(clients.id, dashboards.clientId))
-    .orderBy(clients.name, desc(dashboards.updatedAt));
-  const activeLinks = await activeLinkCountsByDashboard(db);
+  const [rows, activeLinks] = await Promise.all([
+    db
+      .select({
+        id: dashboards.id,
+        name: dashboards.name,
+        clientName: clients.name,
+        updatedAt: dashboards.updatedAt,
+      })
+      .from(dashboards)
+      .innerJoin(clients, eq(clients.id, dashboards.clientId))
+      .orderBy(clients.name, desc(dashboards.updatedAt)),
+    activeLinkCountsByDashboard(db),
+  ]);
 
   return (
     <>

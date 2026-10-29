@@ -39,6 +39,8 @@ export const dashboardConfigSchema = z.object({
   viewer: z.object({
     allowPeriodChange: z.boolean(),
     allowCampaignFilter: z.boolean(),
+    /** The viewer may reorder and hide blocks. The choice stays on their device. */
+    allowCustomize: z.boolean().default(true),
   }),
   sections: z.array(sectionSchema).max(20),
 });
@@ -57,13 +59,25 @@ export function newId(prefix: string): string {
   return `${prefix}_${Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("")}`;
 }
 
+/** Empty structure used when an admin creates a model from scratch. */
+export function blankDashboardConfig(): DashboardConfig {
+  return {
+    version: 1,
+    defaultPeriod: "last_30_days",
+    compareToPreviousPeriod: true,
+    chartColors: [DEFAULT_CHART_COLORS[0], DEFAULT_CHART_COLORS[1]],
+    viewer: { allowPeriodChange: true, allowCampaignFilter: true, allowCustomize: true },
+    sections: [{ id: newId("sec"), title: "Nouvelle section", widgets: [] }],
+  };
+}
+
 /** Reproduces the four sections of the agency's Looker Studio reference dashboard. */
 export const REFERENCE_TEMPLATE_CONFIG: DashboardConfig = {
   version: 1,
   defaultPeriod: "last_30_days",
   compareToPreviousPeriod: true,
   chartColors: [DEFAULT_CHART_COLORS[0], DEFAULT_CHART_COLORS[1]],
-  viewer: { allowPeriodChange: true, allowCampaignFilter: true },
+  viewer: { allowPeriodChange: true, allowCampaignFilter: true, allowCustomize: true },
   sections: [
     {
       id: "sec_invest",
