@@ -18,25 +18,19 @@ export type DashboardSortable = {
   activeLinks: number;
 };
 
-/** Filter labels match the columns: dashboard name, client, active links, last edit. */
-export const DASHBOARD_SORT_FIELDS: { key: DashboardSortKey; label: string; column: string }[] = [
-  { key: "name", label: "Nom", column: "Dashboard" },
-  { key: "client", label: "Client", column: "Client" },
-  { key: "links", label: "Lien", column: "Liens actifs" },
-  { key: "updated", label: "Date de modification", column: "Modifié" },
+/** Column titles. Clicking one sorts the list. */
+export const DASHBOARD_SORT_COLUMNS: { key: DashboardSortKey; label: string }[] = [
+  { key: "name", label: "Dashboard" },
+  { key: "client", label: "Client" },
+  { key: "links", label: "Liens" },
+  { key: "updated", label: "Modifié le" },
 ];
 
-/** Same order the list used before sorting controls existed. */
+/** Same order the list used before column sorting existed. */
 export const DEFAULT_DASHBOARD_SORT: DashboardSort = { key: "client", dir: "asc" };
 
 export function defaultDashboardSortDir(key: DashboardSortKey): DashboardSortDir {
   return key === "links" || key === "updated" ? "desc" : "asc";
-}
-
-export function dashboardSortOrderLabel(key: DashboardSortKey, dir: DashboardSortDir): string {
-  if (key === "updated") return dir === "asc" ? "Plus ancien" : "Plus récent";
-  if (key === "links") return dir === "asc" ? "Moins de liens" : "Plus de liens";
-  return dir === "asc" ? "A → Z" : "Z → A";
 }
 
 function firstParam(value: string | string[] | undefined): string | undefined {
@@ -57,7 +51,7 @@ export function parseDashboardSort(params: { sort?: string | string[]; dir?: str
   return { key: sort, dir: defaultDashboardSortDir(sort) };
 }
 
-/** Column header target: flip the active column, otherwise open that column in its default direction. */
+/** Same column flips direction. Another column opens in its default direction. */
 export function nextDashboardSort(current: DashboardSort, key: DashboardSortKey): DashboardSort {
   if (current.key === key) return { key, dir: current.dir === "asc" ? "desc" : "asc" };
   return { key, dir: defaultDashboardSortDir(key) };

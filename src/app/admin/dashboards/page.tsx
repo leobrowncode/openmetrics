@@ -1,8 +1,15 @@
 import Link from "next/link";
 import { eq } from "drizzle-orm";
-import { DashboardSortBar, DashboardSortHeader } from "@/components/admin/DashboardSortBar";
-import { Card, EmptyState, PageHeader, formatDateTime } from "@/components/ui";
-import { DASHBOARD_SORT_FIELDS, parseDashboardSort, sortDashboards } from "@/lib/dashboard-list-sort";
+import { Card, EmptyState, PageHeader, cx, formatDateTime } from "@/components/ui";
+import {
+  DASHBOARD_SORT_COLUMNS,
+  dashboardSortHref,
+  nextDashboardSort,
+  parseDashboardSort,
+  sortDashboards,
+  type DashboardSort,
+  type DashboardSortKey,
+} from "@/lib/dashboard-list-sort";
 import { plainDashes } from "@/lib/text";
 import { activeLinkCountsByDashboard } from "@/server/admin/counts";
 import { requireAdmin } from "@/server/auth/admin";
@@ -41,35 +48,49 @@ export default async function DashboardsPage({ searchParams }: PageProps<"/admin
           pour en créer un.
         </EmptyState>
       ) : (
-        <>
-          <DashboardSortBar sort={sort} />
-          <Card className="overflow-x-auto">
-            <table className="min-w-full text-sm">
-              <thead>
-                <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
-                  {DASHBOARD_SORT_FIELDS.map((field) => (
-                    <DashboardSortHeader key={field.key} sort={sort} sortKey={field.key} />
-                  ))}
-                </tr>
-              </thead>
-              <tbody>
-                {sorted.map((d) => (
-                  <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
-                    <td className="px-5 py-3">
-                      <Link href={`/admin/dashboards/${d.id}`} className="font-medium text-brand-700 hover:underline">
-                        {plainDashes(d.name)}
-                      </Link>
-                    </td>
-                    <td className="px-5 py-3 text-slate-700">{plainDashes(d.clientName)}</td>
-                    <td className="px-5 py-3 tabular">{d.activeLinks}</td>
-                    <td className="px-5 py-3 text-slate-500">{formatDateTime(d.updatedAt)}</td>
-                  </tr>
+        <Card className="overflow-x-auto">
+          <table className="min-w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-200 text-left text-xs uppercase tracking-wide text-slate-500">
+                {DASHBOARD_SORT_COLUMNS.map((column) => (
+                  <SortHeader key={column.key} sort={sort} sortKey={column.key} label={column.label} />
                 ))}
-              </tbody>
-            </table>
-          </Card>
-        </>
+              </tr>
+            </thead>
+            <tbody>
+              {sorted.map((d) => (
+                <tr key={d.id} className="border-b border-slate-100 last:border-0 hover:bg-slate-50">
+                  <td className="px-5 py-3">
+                    <Link href={`/admin/dashboards/${d.id}`} className="font-medium text-brand-700 hover:underline">
+                      {plainDashes(d.name)}
+                    </Link>
+                  </td>
+                  <td className="px-5 py-3 text-slate-700">{plainDashes(d.clientName)}</td>
+                  <td className="px-5 py-3 tabular">{d.activeLinks}</td>
+                  <td className="px-5 py-3 text-slate-500">{formatDateTime(d.updatedAt)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </Card>
       )}
     </>
+  );
+}
+
+function SortHeader({ sort, sortKey, label }: { sort: DashboardSort; sortKey: DashboardSortKey; label: string }) {
+  const active = sort.key === sortKey;
+  const next = nextDashboardSort(sort, sortKey);
+  return (
+    <th scope="col" aria-sort={active ? (sort.dir === "asc" ? "ascending" : "descending") : "none"} className="p-0 font-medium">
+      <Link
+        href={dashboardSortHref(next)}
+        scroll={false}
+        className={cx("inline-flex w-full items-center gap-1 px-5 py-3 hover:text-slate-900", active && "text-slate-900")}
+      >
+        {label}
+        {active && <span aria-hidden="true">{sort.dir === "asc" ? "↑" : "↓"}</span>}
+      </Link>
+    </th>
   );
 }
