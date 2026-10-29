@@ -133,7 +133,7 @@ export const METRICS = {
     shortLabel: "CPM",
     unit: "currency",
     adsManagerColumn: "CPM (coût pour 1 000 impressions)",
-    description: "Montant dépensé ÷ impressions × 1 000.",
+    description: "(Montant dépensé ÷ impressions) × 1 000.",
     higherIsBetter: false,
     compute: (s) => ratio(s.spend, s.impressions, 1000),
   },

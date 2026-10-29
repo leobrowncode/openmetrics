@@ -111,7 +111,7 @@ export function DashboardView({
             </p>
             {data.previousRange && (
               <p className="text-xs text-slate-500">
-                Comparaison avec la période précédente : {formatDateFr(data.previousRange.from)} – {formatDateFr(data.previousRange.to)}
+                vs {formatDateFr(data.previousRange.from)} – {formatDateFr(data.previousRange.to)}
               </p>
             )}
           </div>
@@ -149,7 +149,7 @@ export function DashboardView({
           {config.sections.map((section) => (
             <section key={section.id} aria-labelledby={`h-${section.id}`}>
               <h2 id={`h-${section.id}`} className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
-                <span className="h-5 w-1.5 rounded-full bg-brand-600" aria-hidden />
+                <span className="h-5 w-1.5 rounded-full" style={{ backgroundColor: chartColors[0] }} aria-hidden />
                 {section.title}
               </h2>
               <div className="space-y-4">
