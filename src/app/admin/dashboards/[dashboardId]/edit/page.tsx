@@ -55,7 +55,7 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
 
       <div className="space-y-6">
         <Card>
-          <CardHeader title="Couleurs des courbes" description="Enregistrées pour ce dashboard uniquement." />
+          <CardHeader title="Couleurs des courbes" />
           <div className="p-5">
             <ChartColorEditor dashboardId={dashboard.id} initialColors={config.chartColors} variant="panel" />
           </div>
