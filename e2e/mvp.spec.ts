@@ -34,6 +34,54 @@ async function viewerPage(browser: Browser): Promise<Page> {
   return context.newPage();
 }
 
+test("admin sorts dashboards by name, client, link and edit date", async ({ page }) => {
+  await login(page);
+  await page.goto("/admin/dashboards");
+  const sortBy = page.getByRole("group", { name: "Trier par" });
+  const order = page.getByRole("group", { name: "Ordre" });
+  const names = page.locator("tbody tr td:first-child a");
+
+  await expect(sortBy.getByRole("link", { name: "Nom", exact: true })).toBeVisible();
+  await expect(sortBy.getByRole("link", { name: "Client", exact: true })).toHaveAttribute("aria-current", "true");
+  await expect(sortBy.getByRole("link", { name: "Lien", exact: true })).toBeVisible();
+  await expect(sortBy.getByRole("link", { name: "Date de modification", exact: true })).toBeVisible();
+  await expect(order.getByRole("link", { name: "A → Z" })).toHaveAttribute("aria-current", "true");
+  await expect(names).toHaveText(["Association Horizon - Reporting Meta Ads", "Maison Lumen - Reporting Meta Ads"]);
+
+  await order.getByRole("link", { name: "Z → A" }).click();
+  await expect(page).toHaveURL(/sort=client&dir=desc/);
+  await expect(page.getByRole("columnheader", { name: "Client" })).toHaveAttribute("aria-sort", "descending");
+  await expect(names).toHaveText(["Maison Lumen - Reporting Meta Ads", "Association Horizon - Reporting Meta Ads"]);
+
+  await sortBy.getByRole("link", { name: "Nom", exact: true }).click();
+  await expect(page).toHaveURL(/sort=name&dir=asc/);
+  await expect(names).toHaveText(["Association Horizon - Reporting Meta Ads", "Maison Lumen - Reporting Meta Ads"]);
+  await page.getByRole("columnheader", { name: "Dashboard" }).getByRole("link").click();
+  await expect(page).toHaveURL(/sort=name&dir=desc/);
+  await expect(names.nth(0)).toHaveText("Maison Lumen - Reporting Meta Ads");
+
+  await sortBy.getByRole("link", { name: "Date de modification", exact: true }).click();
+  await expect(page).toHaveURL(/sort=updated&dir=desc/);
+  await expect(order.getByRole("link", { name: "Plus récent" })).toHaveAttribute("aria-current", "true");
+  const newestFirst = await names.allInnerTexts();
+  await order.getByRole("link", { name: "Plus ancien" }).click();
+  await expect(page).toHaveURL(/sort=updated&dir=asc/);
+  await expect(names).toHaveText([...newestFirst].reverse());
+
+  await page.getByRole("columnheader", { name: "Liens actifs" }).getByRole("link").click();
+  await expect(page).toHaveURL(/sort=links&dir=desc/);
+  await expect(order.getByRole("link", { name: "Plus de liens" })).toHaveAttribute("aria-current", "true");
+  await page.getByRole("columnheader", { name: "Liens actifs" }).getByRole("link").click();
+  await expect(page).toHaveURL(/sort=links&dir=asc/);
+  await expect(page.getByRole("columnheader", { name: "Liens actifs" })).toHaveAttribute("aria-sort", "ascending");
+
+  await page.setViewportSize({ width: 390, height: 844 });
+  await expect(sortBy.getByRole("link", { name: "Lien", exact: true })).toBeVisible();
+  await expect(order.getByRole("link", { name: "Moins de liens" })).toBeVisible();
+  await names.first().click();
+  await expect(page.getByTestId("kpi-spend")).toBeVisible();
+});
+
 test("admin area requires authentication", async ({ page }) => {
   await page.goto("/admin/clients");
   await expect(page).toHaveURL(/\/login$/);
