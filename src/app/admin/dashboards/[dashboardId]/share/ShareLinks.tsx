@@ -4,6 +4,7 @@ import { useActionState, useCallback, useEffect, useRef, useState } from "react"
 import { ActionForm, ShareUrlReveal } from "@/components/admin/ActionForm";
 import { ShareStateBadge } from "@/components/admin/status";
 import { Button, Card, CardHeader, EmptyState, Field, Notice, buttonClass, cx, formatDateTime, inputClass } from "@/components/ui";
+import { plainDashes } from "@/lib/text";
 import type { ActionState } from "@/app/admin/actions/context";
 import {
   createShareLinkAction,
@@ -21,6 +22,7 @@ export type ShareLinkRow = {
   revokedAt: string | null;
   lastAccessedAt: string | null;
   accessCount: number;
+  bilanName: string | null;
 };
 
 function ExpiryFields({ defaultChoice = "90" }: { defaultChoice?: string }) {
@@ -74,6 +76,7 @@ function ShareLinkItem({
   const [copyState, setCopyState] = useState<"idle" | "copied" | "error">("idle");
   const timer = useRef<number | null>(null);
   const copied = copyState === "copied";
+  const label = plainDashes(link.label);
   const [renewState, renewAction, renewPending] = useActionState(renewShareLinkAction, null);
   const deliveredRenew = useRef<ActionState | null>(null);
 
@@ -108,7 +111,7 @@ function ShareLinkItem({
           <button
             type="button"
             className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-lg px-2 py-1 -mx-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-            aria-label={copied ? `Lien de ${link.label} copié` : `Copier le lien de ${link.label}`}
+            aria-label={copied ? `Lien de ${label} copié` : `Copier le lien de ${label}`}
             title={copied ? "Copié" : "Copier le lien"}
             onClick={() => void copy()}
           >
@@ -140,7 +143,7 @@ function ShareLinkItem({
         )}
       </div>
       <p className="sr-only" role="status">
-        {copied ? `Lien de ${link.label} copié dans le presse-papiers.` : copyState === "error" ? "Impossible de copier le lien." : ""}
+        {copied ? `Lien de ${label} copié dans le presse-papiers.` : copyState === "error" ? "Impossible de copier le lien." : ""}
       </p>
       {url && copyState === "error" && (
         <div className="space-y-1">
@@ -181,8 +184,9 @@ function LinkSummary({ link, hint }: { link: ShareLinkRow; hint?: string }) {
   return (
     <div className="min-w-0 flex-1">
       <p className="font-medium text-slate-900">
-        {link.label} <ShareStateBadge state={link.state} />
+        {plainDashes(link.label)} <ShareStateBadge state={link.state} />
       </p>
+      {link.bilanName && <p className="text-xs text-slate-600">Bilan : {link.bilanName}</p>}
       <p className="text-xs text-slate-500">
         Créé le {formatDateTime(link.createdAt)} · expire {link.expiresAt ? `le ${formatDateTime(link.expiresAt)}` : "jamais"}
         {link.revokedAt && ` · révoqué le ${formatDateTime(link.revokedAt)}`}
@@ -254,7 +258,7 @@ export function ShareLinks({ dashboardId, links }: { dashboardId: string; links:
         <div className="p-5">
           <ActionForm action={createShareLinkAction} hidden={{ dashboardId }} submitLabel="Générer le lien" onResult={remember}>
             <Field label="Destinataire / libellé" hint="Pour savoir qui détient ce lien (non visible par le client).">
-              <input name="label" required maxLength={120} className={inputClass} placeholder="Ex. Marie — Responsable communication" />
+              <input name="label" required maxLength={120} className={inputClass} placeholder="Ex. Marie - Responsable communication" />
             </Field>
             <ExpiryFields />
           </ActionForm>

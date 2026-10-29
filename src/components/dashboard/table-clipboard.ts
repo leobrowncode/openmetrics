@@ -1,4 +1,6 @@
-import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import { metricColumnHeader, type ConversionNaming } from "@/lib/conversion-actions";
+import { computeMetric, formatMetric, type MetricKey, type Sums } from "@/lib/metrics";
+import { plainDashes } from "@/lib/text";
 import { formatBucket, type Granularity } from "./aggregate";
 
 export interface CampaignTableRow extends Sums {
@@ -23,8 +25,9 @@ export function seriesTableMatrix(
   buckets: Array<{ bucket: string } & Sums>,
   granularity: Granularity,
   currency: string,
+  naming: ConversionNaming | null = null,
 ): string[][] {
-  const header = [PERIOD_HEADER[granularity], ...metrics.map((key) => getMetric(key).shortLabel)];
+  const header = [PERIOD_HEADER[granularity], ...metrics.map((key) => metricColumnHeader(key, naming))];
   const body = buckets.map((bucket) => [
     formatBucket(bucket.bucket, granularity),
     ...metrics.map((key) => clipboardMetric(key, bucket, currency)),
@@ -37,9 +40,10 @@ export function campaignTableMatrix(
   rows: CampaignTableRow[],
   totals: Sums,
   currency: string,
+  naming: ConversionNaming | null = null,
 ): string[][] {
-  const header = ["Campagne", ...metrics.map((key) => getMetric(key).shortLabel)];
-  const body = rows.map((row) => [row.name, ...metrics.map((key) => clipboardMetric(key, row, currency))]);
+  const header = ["Campagne", ...metrics.map((key) => metricColumnHeader(key, naming))];
+  const body = rows.map((row) => [plainDashes(row.name), ...metrics.map((key) => clipboardMetric(key, row, currency))]);
   const total = ["Total", ...metrics.map((key) => clipboardMetric(key, totals, currency))];
   return [header, ...body, total];
 }

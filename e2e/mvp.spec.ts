@@ -13,7 +13,7 @@ async function login(page: Page) {
 
 async function openDashboard(page: Page, client: string) {
   await page.goto("/admin/dashboards");
-  await page.getByRole("link", { name: `${client} — Reporting Meta Ads` }).click();
+  await page.getByRole("link", { name: `${client} - Reporting Meta Ads` }).click();
   await expect(page.getByTestId("kpi-spend")).toBeVisible();
 }
 
@@ -47,11 +47,22 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await login(page);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/01-admin-overview.png`, fullPage: true });
   await openDashboard(page, "Association Horizon");
+  const dashboardName = "Association Horizon - Reporting Meta Ads";
+  await expect(page.getByRole("heading", { name: dashboardName, exact: true })).toHaveCount(1);
+  await expect(page.locator("p").filter({ hasText: new RegExp(`^${dashboardName}$`) })).toHaveCount(0);
+  await expect(page.getByText("Association Horizon", { exact: true })).toHaveCount(1);
 
-  for (const title of ["Investissements", "Impressions et clics", "CTR et CPC", "Conversions"]) {
+  for (const title of ["Investissements", "Impressions et clics", "CTR et CPC", "Achats"]) {
     await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
   }
   await expect(page.getByText("Dernière actualisation")).toBeVisible();
+  const periodBox = await page.getByLabel("Période").boundingBox();
+  const campaignBox = await page.getByRole("button", { name: "Toutes les campagnes" }).boundingBox();
+  expect(periodBox && campaignBox).toBeTruthy();
+  const center = (box: { y: number; height: number }) => box.y + box.height / 2;
+  expect(Math.abs(center(periodBox!) - center(campaignBox!))).toBeLessThan(3);
+  expect(Math.abs(periodBox!.height - campaignBox!.height)).toBeLessThan(2);
+  expect(campaignBox!.x).toBeGreaterThan(periodBox!.x + periodBox!.width);
   const spend = await page.getByTestId("kpi-spend").first().innerText();
   expect(spend).toMatch(/€/);
   const tableTotal = page.locator("tfoot td").nth(1);
@@ -65,7 +76,7 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await expect(campaignCard.getByRole("button", { name: "Tableau copié" })).toBeVisible();
   const pasted = await page.evaluate(() => navigator.clipboard.readText());
   const lines = pasted.trim().split("\n");
-  expect(lines[0]).toBe("Campagne\tDépenses\tImpressions\tClics lien\tCTR lien\tCPC lien\tConversions\tCVR\tROAS");
+  expect(lines[0]).toBe("Campagne\tDépenses\tImpressions\tClics lien\tCTR lien\tCPC lien\tAchats\tTaux de conversion (achats)\tROAS (achats)");
   expect(lines.at(-1)?.startsWith("Total\t")).toBe(true);
   expect(lines.at(-1)).toContain(spend.replace(/\u202F|\u00A0/g, " "));
 
@@ -85,7 +96,7 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
 test("private link: viewer access, filters, isolation and revocation", async ({ page, browser }) => {
   await login(page);
   await openDashboard(page, "Association Horizon");
-  const url = await createShareLink(page, "E2E — Direction client");
+  const url = await createShareLink(page, "E2E - Direction client");
   expect(url).toMatch(/\/share#t=[A-Za-z0-9_-]{43}$/);
   const token = url.split("#t=")[1];
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/03-admin-share-link.png`, fullPage: true });
@@ -95,7 +106,9 @@ test("private link: viewer access, filters, isolation and revocation", async ({ 
   viewer.on("request", (r) => requests.push(r.url()));
   await viewer.goto(url.replace(/^https?:\/\/[^/]+/, ""));
   await expect(viewer).toHaveURL(/\/share\/[0-9a-f-]{36}$/);
-  await expect(viewer.getByRole("heading", { name: "Association Horizon — Reporting Meta Ads" })).toBeVisible();
+  await expect(viewer.getByRole("heading", { name: "Association Horizon - Reporting Meta Ads" })).toBeVisible();
+  await expect(viewer.getByText("Association Horizon", { exact: true })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "Couleurs" })).toHaveCount(0);
   await expect(viewer.getByText("Consultation en lecture seule.", { exact: false })).toBeVisible();
   expect(requests.every((r) => !r.includes(token))).toBe(true);
   expect(viewer.url()).not.toContain(token);
@@ -115,9 +128,9 @@ test("private link: viewer access, filters, isolation and revocation", async ({ 
   await expect(viewer.getByTestId("kpi-spend").first()).not.toHaveText(before);
 
   await viewer.getByRole("button", { name: "Toutes les campagnes" }).click();
-  await viewer.getByLabel("FDA — Broad — Dons").check();
+  await viewer.getByLabel("FDA - Broad - Dons").check();
   await viewer.getByRole("button", { name: "Appliquer" }).click();
-  await expect(viewer.getByRole("button", { name: "FDA — Broad — Dons" })).toBeVisible();
+  await expect(viewer.getByRole("button", { name: "FDA - Broad - Dons" })).toBeVisible();
   await expect(viewer.locator("tbody tr")).toHaveCount(1);
   if (SHOTS) await viewer.screenshot({ path: `${SHOTS}/04-viewer-dashboard.png`, fullPage: true });
 
@@ -140,6 +153,48 @@ test("private link: viewer access, filters, isolation and revocation", async ({ 
   if (SHOTS) await fresh.screenshot({ path: `${SHOTS}/05-viewer-revoked.png` });
 });
 
+test("bilan freezes the chosen campaigns and period", async ({ page, browser }) => {
+  await login(page);
+  await page.goto("/admin/clients");
+  await page.getByRole("link", { name: /Association Horizon/ }).click();
+  await expect(page.getByRole("heading", { name: "Ajouter un compte" })).toHaveCount(0);
+
+  await openDashboard(page, "Association Horizon");
+  await expect(page.getByText("offsite_conversion.fb_pixel_purchase")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Achats", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Toutes les campagnes" }).click();
+  await page.getByLabel("FDA - Broad - Dons").check();
+  await page.getByRole("button", { name: "Appliquer" }).click();
+  await page.getByText("Générer un bilan", { exact: true }).click();
+  await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
+  await expect(page).toHaveURL(/\/bilans\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { name: "Bilan - FDA - Broad - Dons" })).toBeVisible();
+  await expect(page.getByText("Campagnes : FDA - Broad - Dons")).toBeVisible();
+  await expect(page.getByLabel("Période")).toHaveCount(0);
+  const spend = await page.getByTestId("kpi-spend").first().innerText();
+
+  await page.getByLabel("Destinataire / libellé").fill("E2E bilan");
+  await page.getByRole("button", { name: "Générer le lien" }).click();
+  const url = await page.getByLabel("Lien privé").inputValue();
+
+  const viewer = await viewerPage(browser);
+  await viewer.goto(url.replace(/^https?:\/\/[^/]+/, ""));
+  await expect(viewer.getByRole("heading", { name: "Bilan - FDA - Broad - Dons" })).toBeVisible();
+  await expect(viewer.getByText("Campagnes : FDA - Broad - Dons")).toBeVisible();
+  await expect(viewer.getByLabel("Période")).toHaveCount(0);
+  await expect(viewer.getByTestId("kpi-spend").first()).toHaveText(spend);
+
+  const linkPath = new URL(viewer.url()).pathname;
+  const tampered = await viewer.request.get(`${linkPath}/data?period=last_7_days&campaigns=1`);
+  expect(tampered.status()).toBe(200);
+  const json = await tampered.json();
+  expect(json.query.period).toBe("custom");
+  expect(json.query.campaignIds).not.toContain("1");
+  expect(json.data.byCampaign).toHaveLength(1);
+  expect(json.data.byCampaign[0].name).toBe("FDA — Broad — Dons");
+});
+
 test("malformed or missing tokens are rejected", async ({ browser }) => {
   const viewer = await viewerPage(browser);
   await viewer.goto("/share#t=not-a-real-token");
@@ -159,7 +214,7 @@ test("admin can configure conversions, widgets and monitor syncs", async ({ page
   await page.goto("/admin/clients");
   await page.getByRole("link", { name: /Maison Lumen/ }).click();
   await page.locator("summary", { hasText: "Conversions comptées" }).click();
-  await page.getByRole("checkbox", { name: /^purchase \(/ }).check();
+  await page.getByRole("checkbox", { name: /^Achat purchase\b/ }).check();
   await page.getByRole("button", { name: "Enregistrer et recalculer" }).click();
   await expect(page.getByText(/doubleraient les conversions/)).toBeVisible();
 
@@ -170,6 +225,57 @@ test("admin can configure conversions, widgets and monitor syncs", async ({ page
   await page.getByRole("checkbox", { name: "CPM (coût pour 1 000 impressions)" }).first().check();
   await page.getByRole("combobox", { name: "Type" }).first().selectOption("timeseries");
   await page.getByRole("button", { name: "Ajouter", exact: true }).first().click();
-  await expect(page.getByText("Graphique temporel — CPM quotidien")).toBeVisible();
+  await expect(page.getByText("Graphique temporel - CPM quotidien")).toBeVisible();
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/07-admin-editor.png`, fullPage: true });
+});
+
+test("admin renames a dashboard from its title and picks chart colors", async ({ page }) => {
+  await login(page);
+  await openDashboard(page, "Association Horizon");
+  const original = "Association Horizon - Reporting Meta Ads";
+  const renamed = "Horizon - Rapport";
+  const dashboardUrl = "/admin/dashboards/10000000-0000-4000-8000-000000000031";
+
+  try {
+    await page.getByRole("button", { name: "Couleurs" }).click();
+    await page.getByRole("radio", { name: "Courbe 1" }).click();
+    await page.getByRole("button", { name: "Vert, nuance 4" }).click();
+    await expect(page.getByText("Couleurs enregistrées pour ce dashboard.")).toBeVisible();
+    const spend = page.locator("div.rounded-xl.border").filter({
+      has: page.getByRole("heading", { name: "Évolution du montant dépensé", exact: true }),
+    });
+    await expect(spend.locator('[fill="#10b981"]').first()).toBeVisible();
+
+    await page.reload();
+    await expect(page.locator('[fill="#10b981"]').first()).toBeVisible();
+
+    await page.getByRole("button", { name: original }).click();
+    await page.getByLabel("Nom du dashboard").fill(renamed);
+    await page.getByRole("button", { name: "Enregistrer" }).click();
+    await expect(page.getByRole("heading", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.getByRole("heading", { name: original, exact: true })).toHaveCount(0);
+
+    await page.reload();
+    await expect(page.getByRole("heading", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.locator('[fill="#10b981"]').first()).toBeVisible();
+
+    await page.getByRole("link", { name: "Configuration" }).click();
+    await expect(page.getByRole("heading", { name: renamed, exact: true })).toBeVisible();
+    await expect(page.getByLabel("Nom", { exact: true })).toHaveValue(renamed);
+    await expect(page.getByRole("button", { name: "Vert, nuance 4" })).toHaveAttribute("aria-pressed", "true");
+  } finally {
+    await page.goto(dashboardUrl, { timeout: 15_000 }).catch(() => undefined);
+    const title = page.getByRole("button", { name: renamed });
+    if (await title.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await title.click();
+      await page.getByLabel("Nom du dashboard").fill(original);
+      await page.getByRole("button", { name: "Enregistrer" }).click();
+    }
+    const colors = page.getByRole("button", { name: "Couleurs" });
+    if (await colors.isVisible({ timeout: 2_000 }).catch(() => false)) {
+      await colors.click();
+      const reset = page.getByRole("button", { name: "Réinitialiser" });
+      if (await reset.isEnabled({ timeout: 2_000 }).catch(() => false)) await reset.click();
+    }
+  }
 });

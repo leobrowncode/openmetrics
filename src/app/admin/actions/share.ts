@@ -7,6 +7,7 @@ import {
   createShareLink,
   renewShareLink,
   revokeShareLink,
+  ShareLinkError,
   updateShareLinkExpiry,
 } from "@/server/share/share-links";
 import { adminContext, appOrigin, formString, shareUrl, type ActionState } from "./context";
@@ -36,9 +37,18 @@ export async function createShareLinkAction(_prev: ActionState | null, formData:
   const [dashboard] = await db.select({ id: dashboards.id }).from(dashboards).where(eq(dashboards.id, dashboardId));
   if (!dashboard) return { error: "Dashboard introuvable." };
 
-  const { link, token } = await createShareLink(db, { dashboardId, label, expiresAt });
-  await log("share_link.create", "share_link", link.id, { dashboardId, expiresAt: expiresAt?.toISOString() ?? null });
+  const bilanId = formString(formData, "bilanId");
+  let created: Awaited<ReturnType<typeof createShareLink>>;
+  try {
+    created = await createShareLink(db, { dashboardId, label, expiresAt, bilanId: bilanId || null });
+  } catch (error) {
+    if (error instanceof ShareLinkError) return { error: error.message };
+    throw error;
+  }
+  const { link, token } = created;
+  await log("share_link.create", "share_link", link.id, { dashboardId, bilanId: bilanId || null, expiresAt: expiresAt?.toISOString() ?? null });
   revalidatePath(`/admin/dashboards/${dashboardId}/share`);
+  if (bilanId) revalidatePath(`/admin/dashboards/${dashboardId}/bilans/${bilanId}`);
   return { ok: true, shareUrl: shareUrl(await appOrigin(), token), shareLinkId: link.id };
 }
 

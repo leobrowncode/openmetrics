@@ -70,16 +70,29 @@ export function parseDashboardQuery(
   return { period, range, campaignIds };
 }
 
+export interface DashboardLock {
+  range: DateRange;
+  campaignIds: string[];
+}
+
+/** A bilan ignores the URL: its dates and campaigns stay those saved at creation. */
+export function lockedDashboardQuery(lock: DashboardLock): DashboardQuery | { error: string } {
+  const error = validateRange(lock.range);
+  if (error) return { error };
+  return { period: "custom", range: lock.range, campaignIds: lock.campaignIds };
+}
+
 export async function loadDashboardPayload(
   db: Db,
   dashboard: Dashboard,
   params: URLSearchParams,
   mode: "viewer" | "admin",
+  lock?: DashboardLock,
 ): Promise<DashboardPayload | { error: string }> {
   const config = parseDashboardConfig(dashboard.config);
   const accounts = await dashboardAccountScope(db, dashboard);
   const timezoneName = accounts[0]?.timezoneName ?? "Europe/Paris";
-  const query = parseDashboardQuery(params, config, timezoneName, mode);
+  const query = lock ? lockedDashboardQuery(lock) : parseDashboardQuery(params, config, timezoneName, mode);
   if ("error" in query) return query;
   const data = await getDashboardData(db, dashboard, {
     range: query.range,

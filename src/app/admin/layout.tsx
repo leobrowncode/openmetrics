@@ -4,7 +4,7 @@ import { requireAdmin } from "@/server/auth/admin";
 import { logoutAction } from "../login/actions";
 import { AdminNav } from "./AdminNav";
 
-export const metadata: Metadata = { title: "Admin — OpenMetrics", robots: { index: false, follow: false } };
+export const metadata: Metadata = { title: "Admin - OpenMetrics", robots: { index: false, follow: false } };
 
 export default async function AdminLayout({ children }: LayoutProps<"/admin">) {
   const admin = await requireAdmin();

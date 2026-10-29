@@ -1,9 +1,12 @@
 import "server-only";
 import { and, asc, between, eq, inArray, sql } from "drizzle-orm";
+import { describeConversionActions, type ConversionDisplay } from "@/lib/conversion-actions";
+import { includeAccountInDashboard } from "@/lib/synthetic-display";
 import { addSums, emptySums, type Sums } from "@/lib/metrics";
 import { formatDateFr, previousPeriod, type DateRange } from "@/lib/periods";
 import type { Db } from "../db/client";
-import { adAccounts, campaigns, dashboards, insightsDaily } from "../db/schema";
+import { adAccounts, campaigns, dashboards, insightsDaily, metaConnections } from "../db/schema";
+import { getSyntheticDisplay, hasRealMetaAccount } from "../settings/synthetic";
 
 export interface CampaignOption {
   id: string;
@@ -26,19 +29,44 @@ export interface DashboardData {
   series: Array<{ date: string } & Sums>;
   byCampaign: Array<{ campaignId: string; name: string } & Sums>;
   warnings: string[];
+  conversion: ConversionDisplay;
 }
 
 type Dashboard = typeof dashboards.$inferSelect;
 
-/** Ad accounts a dashboard may read: always restricted to the dashboard's own client. */
+/**
+ * Ad accounts a dashboard may read: always restricted to the dashboard's own client.
+ * Synthetic accounts are left out once that client has a real Meta account, or when
+ * the instance hides synthetic data.
+ */
 export async function dashboardAccountScope(db: Db, dashboard: Dashboard) {
+  return (await loadDashboardAccounts(db, dashboard)).accounts;
+}
+
+async function loadDashboardAccounts(db: Db, dashboard: Dashboard) {
   const rows = await db
-    .select()
+    .select({ account: adAccounts, kind: metaConnections.kind })
     .from(adAccounts)
+    .innerJoin(metaConnections, eq(metaConnections.id, adAccounts.connectionId))
     .where(and(eq(adAccounts.clientId, dashboard.clientId), eq(adAccounts.isActive, true)))
     .orderBy(asc(adAccounts.name));
   const subset = dashboard.adAccountIds ?? [];
-  return subset.length ? rows.filter((a) => subset.includes(a.id)) : rows;
+  const selected = subset.length ? rows.filter((row) => subset.includes(row.account.id)) : rows;
+  const display = await getSyntheticDisplay(db);
+  const clientHasRealAccount = selected.some((row) => row.kind === "meta");
+  const instanceHasRealAccount = display === "auto" ? clientHasRealAccount || (await hasRealMetaAccount(db)) : false;
+  const accounts = selected
+    .filter((row) =>
+      includeAccountInDashboard({
+        kind: row.kind,
+        display,
+        instanceHasRealAccount,
+        clientHasRealAccount,
+      }),
+    )
+    .map((row) => row.account);
+  const syntheticOmitted = accounts.length !== selected.length;
+  return { accounts, syntheticOmitted };
 }
 
 const sums = {
@@ -66,9 +94,16 @@ export async function getDashboardData(
   dashboard: Dashboard,
   query: { range: DateRange; campaignIds?: string[]; compare: boolean },
 ): Promise<DashboardData> {
-  const accounts = await dashboardAccountScope(db, dashboard);
+  const { accounts, syntheticOmitted } = await loadDashboardAccounts(db, dashboard);
   const accountIds = accounts.map((a) => a.id);
   const warnings: string[] = [];
+  if (syntheticOmitted) {
+    warnings.push(
+      accounts.length === 0
+        ? "Les données synthétiques sont masquées. Reliez un compte Meta réel, ou réactivez l'affichage dans Connexions Meta."
+        : "Les comptes de démonstration sont exclus : ce client a un compte Meta réel.",
+    );
+  }
 
   const currencies = [...new Set(accounts.map((a) => a.currency))];
   const timezones = [...new Set(accounts.map((a) => a.timezoneName))];
@@ -80,9 +115,11 @@ export async function getDashboardData(
   if (timezones.length > 1) {
     warnings.push(`Les comptes utilisent plusieurs fuseaux horaires (${timezones.join(", ")}) : les jours ne sont pas alignés.`);
   }
+  const conversion = describeConversionActions(accounts.map((a) => ({ name: a.name, types: a.conversionActionTypes })));
   if (accounts.some((a) => a.conversionActionTypes.length === 0)) {
     warnings.push("Le type de conversion n'est pas configuré pour au moins un compte : les conversions affichées sont à 0.");
   }
+  if (conversion.warning) warnings.push(conversion.warning);
 
   const previousRange = query.compare ? previousPeriod(query.range) : null;
   const earliestNeeded = previousRange?.from ?? query.range.from;
@@ -110,9 +147,10 @@ export async function getDashboardData(
     series: [] as DashboardData["series"],
     byCampaign: [] as DashboardData["byCampaign"],
     warnings,
+    conversion,
   };
   if (accountIds.length === 0) {
-    warnings.push("Aucun compte publicitaire actif n'est associé à ce dashboard.");
+    if (!syntheticOmitted) warnings.push("Aucun compte publicitaire actif n'est associé à ce dashboard.");
     return base;
   }
   if (currencies.length > 1) return base;

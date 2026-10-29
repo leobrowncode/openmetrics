@@ -4,6 +4,7 @@ import { DashboardView } from "@/components/dashboard/DashboardView";
 import { parseDashboardConfig } from "@/lib/dashboard-config";
 import { getDb } from "@/server/db/client";
 import { clients } from "@/server/db/schema";
+import { getBilan } from "@/server/dashboards/bilans";
 import { loadDashboardPayload } from "@/server/dashboards/query";
 import { verifyViewer } from "@/server/share/viewer-session";
 
@@ -36,8 +37,12 @@ export default async function ViewerPage(props: PageProps<"/share/[linkId]">) {
   const params = new URLSearchParams();
   for (const [key, value] of Object.entries(searchParams)) if (typeof value === "string") params.set(key, value);
 
-  const payload = await loadDashboardPayload(db, share.dashboard, params, "viewer");
-  const fallback = "error" in payload ? await loadDashboardPayload(db, share.dashboard, new URLSearchParams(), "viewer") : payload;
+  const bilan = share.link.bilanId ? await getBilan(db, share.dashboard.id, share.link.bilanId) : null;
+  if (share.link.bilanId && !bilan) return <InvalidLink />;
+  const lock = bilan ? { range: { from: bilan.rangeFrom, to: bilan.rangeTo }, campaignIds: bilan.campaignIds } : undefined;
+
+  const payload = await loadDashboardPayload(db, share.dashboard, params, "viewer", lock);
+  const fallback = "error" in payload ? await loadDashboardPayload(db, share.dashboard, new URLSearchParams(), "viewer", lock) : payload;
   if ("error" in fallback) return <InvalidLink />;
   const [client] = await db.select({ name: clients.name }).from(clients).where(eq(clients.id, share.dashboard.clientId));
 
@@ -48,8 +53,10 @@ export default async function ViewerPage(props: PageProps<"/share/[linkId]">) {
         initial={fallback}
         dataUrl={`/share/${linkId}/data`}
         mode="viewer"
-        title={share.dashboard.name}
+        title={bilan?.name ?? share.dashboard.name}
         subtitle={client?.name}
+        locked={Boolean(bilan)}
+        dashboardId={share.dashboard.id}
       />
     </main>
   );

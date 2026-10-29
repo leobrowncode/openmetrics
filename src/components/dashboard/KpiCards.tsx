@@ -1,4 +1,5 @@
-import { computeMetric, formatMetric, getMetric, relativeDelta, type MetricKey, type Sums } from "@/lib/metrics";
+import { presentMetric, type ConversionNaming } from "@/lib/conversion-actions";
+import { computeMetric, formatMetric, relativeDelta, type MetricKey, type Sums } from "@/lib/metrics";
 import { cx } from "../ui";
 
 export function KpiCards({
@@ -6,16 +7,18 @@ export function KpiCards({
   totals,
   previousTotals,
   currency,
+  naming = null,
 }: {
   metrics: MetricKey[];
   totals: Sums;
   previousTotals: Sums | null;
   currency: string;
+  naming?: ConversionNaming | null;
 }) {
   return (
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {metrics.map((key) => {
-        const def = getMetric(key);
+        const def = presentMetric(key, naming);
         const value = computeMetric(key, totals);
         const previous = previousTotals ? computeMetric(key, previousTotals) : null;
         const delta = previousTotals ? relativeDelta(value, previous) : null;
@@ -29,7 +32,7 @@ export function KpiCards({
             {previousTotals && (
               <p className="mt-1 text-xs text-slate-500">
                 {delta === null ? (
-                  <span>— vs période précédente</span>
+                  <span>-</span>
                 ) : (
                   <>
                     <span className={cx("font-semibold", good === true && "text-emerald-600", good === false && "text-red-600")}>

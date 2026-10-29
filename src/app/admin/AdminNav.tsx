@@ -1,7 +1,7 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { NavLink } from "@/components/admin/NavLink";
 import { cx } from "@/components/ui";
 
 const ITEMS = [
@@ -21,16 +21,17 @@ export function AdminNav() {
       {ITEMS.map((item) => {
         const active = item.exact ? pathname === item.href : pathname.startsWith(item.href);
         return (
-          <Link
+          <NavLink
             key={item.href}
             href={item.href}
+            active={active}
             className={cx(
               "rounded-md px-2.5 py-1.5 text-sm font-medium",
               active ? "bg-brand-50 text-brand-700" : "text-slate-600 hover:bg-slate-100 hover:text-slate-900",
             )}
           >
             {item.label}
-          </Link>
+          </NavLink>
         );
       })}
     </nav>
