@@ -101,6 +101,7 @@ describe("client data isolation", () => {
     expect(forged.totals.spend).toBe(0);
     expect(forged.series).toEqual([]);
     expect(forged.byCampaign).toEqual([]);
+    expect(forged.dataFrom).toBeNull();
 
     // A dashboard pointing at another client's account id must not read it either.
     const crafted = { ...a.dashboard, adAccountIds: [b.account.id] };
@@ -126,6 +127,7 @@ describe("client data isolation", () => {
     expect(data.totals).toMatchObject({ spend: 20, conversions: 3, conversionValue: 150 });
     expect(data.previousRange).toEqual({ from: "2026-09-29", to: "2026-09-30" });
     expect(data.previousTotals?.spend).toBe(4);
+    expect(data.dataFrom).toBe("2026-09-29");
     expect(data.series.map((s) => s.date)).toEqual(["2026-10-01", "2026-10-02"]);
     expect(data.byCampaign.reduce((acc, c) => acc + c.spend, 0)).toBe(20);
 
@@ -136,5 +138,6 @@ describe("client data isolation", () => {
     });
     expect(filtered.totals.spend).toBe(10);
     expect(filtered.selectedCampaignIds).toEqual(["c2"]);
+    expect(filtered.dataFrom).toBe("2026-10-01");
   });
 });

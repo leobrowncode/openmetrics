@@ -3,7 +3,7 @@ import { and, asc, between, eq, inArray, sql } from "drizzle-orm";
 import { describeConversionActions, type ConversionDisplay } from "@/lib/conversion-actions";
 import { includeAccountInDashboard } from "@/lib/synthetic-display";
 import { addSums, emptySums, type Sums } from "@/lib/metrics";
-import { formatDateFr, previousPeriod, type DateRange } from "@/lib/periods";
+import { formatDateFr, isIsoDate, previousPeriod, type DateRange } from "@/lib/periods";
 import type { Db } from "../db/client";
 import { adAccounts, campaigns, dashboards, insightsDaily, metaConnections } from "../db/schema";
 import { getSyntheticDisplay, hasRealMetaAccount } from "../settings/synthetic";
@@ -17,6 +17,8 @@ export interface CampaignOption {
 export interface DashboardData {
   range: DateRange;
   previousRange: DateRange | null;
+  /** Earliest insight day for the current campaign scope, including days outside `range`. */
+  dataFrom: string | null;
   currency: string;
   timezoneName: string;
   /** Oldest successful sync among the dashboard's accounts (conservative freshness). */
@@ -78,6 +80,12 @@ const sums = {
   conversionValue: sql<number>`coalesce(sum(${insightsDaily.conversionValue}), 0)::float8`,
 };
 
+function toIsoDay(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const day = value.slice(0, 10);
+  return isIsoDate(day) ? day : null;
+}
+
 function toSums(row: Record<keyof Sums, unknown>): Sums {
   return {
     spend: Number(row.spend),
@@ -136,6 +144,7 @@ export async function getDashboardData(
   const base = {
     range: query.range,
     previousRange,
+    dataFrom: null as string | null,
     currency: currencies[0] ?? "EUR",
     timezoneName: timezones[0] ?? "Europe/Paris",
     lastSyncedAt: null as string | null,
@@ -182,12 +191,25 @@ export async function getDashboardData(
       requested.length ? inArray(insightsDaily.metaCampaignId, requested) : undefined,
     );
 
-  const seriesRows = await db
+  // First stored day for this scope, even when the selected range starts later.
+  // The toolbar uses it to begin the period where the charts actually have data.
+  const earliestQuery = db
+    .select({ date: sql<string | null>`min(${insightsDaily.date})::text` })
+    .from(insightsDaily)
+    .where(
+      and(
+        inArray(insightsDaily.adAccountId, accountIds),
+        requested.length ? inArray(insightsDaily.metaCampaignId, requested) : undefined,
+      ),
+    );
+  const seriesQuery = db
     .select({ date: insightsDaily.date, ...sums })
     .from(insightsDaily)
     .where(where(query.range))
     .groupBy(insightsDaily.date)
     .orderBy(asc(insightsDaily.date));
+  const [[earliest], seriesRows] = await Promise.all([earliestQuery, seriesQuery]);
+  base.dataFrom = toIsoDay(earliest?.date);
   base.series = seriesRows.map((r) => ({ date: r.date, ...toSums(r) }));
   base.totals = base.series.reduce((acc, row) => addSums(acc, row), emptySums());
 

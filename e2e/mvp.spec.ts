@@ -58,11 +58,22 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await expect(page.getByText("Dernière actualisation")).toBeVisible();
   const periodBox = await page.getByLabel("Période").boundingBox();
   const campaignBox = await page.getByRole("button", { name: "Toutes les campagnes" }).boundingBox();
-  expect(periodBox && campaignBox).toBeTruthy();
+  const bilanBox = await page.getByText("Générer un bilan", { exact: true }).boundingBox();
+  const startBox = await page.getByRole("button", { name: /Depuis le début/ }).boundingBox();
+  expect(periodBox && campaignBox && bilanBox && startBox).toBeTruthy();
   const center = (box: { y: number; height: number }) => box.y + box.height / 2;
   expect(Math.abs(center(periodBox!) - center(campaignBox!))).toBeLessThan(3);
   expect(Math.abs(periodBox!.height - campaignBox!.height)).toBeLessThan(2);
+  expect(Math.abs(bilanBox!.height - campaignBox!.height)).toBeLessThan(2);
+  expect(Math.abs(center(bilanBox!) - center(campaignBox!))).toBeLessThan(3);
+  expect(Math.abs(startBox!.height - campaignBox!.height)).toBeLessThan(2);
   expect(campaignBox!.x).toBeGreaterThan(periodBox!.x + periodBox!.width);
+  const selectedBox = await page.locator("span.text-slate-700").filter({ hasText: "Période sélectionnée" }).boundingBox();
+  const comparedBox = await page.locator("span.text-slate-500").filter({ hasText: "Comparé à" }).boundingBox();
+  expect(selectedBox && comparedBox).toBeTruthy();
+  expect(comparedBox!.x).toBeGreaterThan(selectedBox!.x + selectedBox!.width - 2);
+  expect(Math.abs(center(selectedBox!) - center(comparedBox!))).toBeLessThan(8);
+
   const spend = await page.getByTestId("kpi-spend").first().innerText();
   expect(spend).toMatch(/€/);
   const tableTotal = page.locator("tfoot td").nth(1);
@@ -90,6 +101,11 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   expect(chartLines).toHaveLength(31);
   expect(chartLines[1]).toMatch(/^\d{2}\/\d{2}\t/);
   expect(chartLines.at(-1)).toMatch(/€/);
+
+  await page.getByRole("button", { name: /Depuis le début/ }).click();
+  await expect(page).toHaveURL(/period=custom&from=\d{4}-\d{2}-\d{2}&to=\d{4}-\d{2}-\d{2}/);
+  await expect(page.getByRole("button", { name: /Depuis le début/ })).toHaveCount(0);
+  await expect(page.getByTestId("kpi-spend").first()).not.toHaveText(spend);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/02-admin-dashboard.png`, fullPage: true });
 });
 

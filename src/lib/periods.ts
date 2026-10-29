@@ -110,6 +110,19 @@ export function previousPeriod(range: DateRange): DateRange {
 
 export const MAX_RANGE_DAYS = 366 * 3;
 
+/**
+ * Starts `to`'s range on the first stored day. Keeps the chosen end, and
+ * never exceeds {@link MAX_RANGE_DAYS}. If the end is before the first day,
+ * the range is that single day.
+ */
+export function rangeFromFirstData(firstData: string, to: string): DateRange {
+  if (!isIsoDate(firstData) || !isIsoDate(to)) return { from: firstData, to };
+  const end = to < firstData ? firstData : to;
+  const earliestAllowed = addDays(end, -(MAX_RANGE_DAYS - 1));
+  const from = firstData < earliestAllowed ? earliestAllowed : firstData;
+  return { from, to: end };
+}
+
 export function validateRange(range: DateRange): string | null {
   if (!isIsoDate(range.from) || !isIsoDate(range.to)) return "Dates invalides.";
   if (range.from > range.to) return "La date de début doit précéder la date de fin.";

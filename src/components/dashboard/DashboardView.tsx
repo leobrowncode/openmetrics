@@ -4,7 +4,6 @@ import { useState, useSyncExternalStore, useTransition } from "react";
 import { conversionSectionTitle, conversionWidgetTitle } from "@/lib/conversion-actions";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
-import { formatDateFr } from "@/lib/periods";
 import { plainDashes } from "@/lib/text";
 import {
   applyViewerLayout,
@@ -19,7 +18,7 @@ import { Button, Notice, formatDateTime } from "../ui";
 import { CampaignTable } from "./CampaignTable";
 import { ChartColorEditor } from "./ChartColorEditor";
 import { CustomizePanel } from "./CustomizePanel";
-import { CampaignFilter, PeriodPicker } from "./Filters";
+import { CampaignFilter, PeriodPicker, PeriodReadout } from "./Filters";
 import { GenerateBilan } from "./GenerateBilan";
 import { KpiCards } from "./KpiCards";
 import { TimeSeriesChart } from "./TimeSeriesChart";
@@ -143,11 +142,6 @@ export function DashboardView({
               Dernière actualisation : <strong className="font-medium text-slate-700">{formatDateTime(data.lastSyncedAt)}</strong>
               {" · "}Devise {data.currency} · Jours au fuseau {data.timezoneName}
             </p>
-            {data.previousRange && (
-              <p className="text-xs text-slate-500">
-                vs {formatDateFr(data.previousRange.from)} - {formatDateFr(data.previousRange.to)}
-              </p>
-            )}
             {data.conversion.technical && (
               <p className="text-sm text-slate-600">
                 Action Meta : <code className="text-xs">{data.conversion.technical}</code>
@@ -165,13 +159,14 @@ export function DashboardView({
                 key={`${query.period}:${query.range.from}:${query.range.to}`}
                 period={query.period}
                 range={query.range}
+                compare={data.previousRange}
+                dataFrom={data.dataFrom}
+                campaignCount={query.campaignIds.length}
                 disabled={pending}
                 onChange={(next) => load(next.period === "custom" ? next : { period: next.period })}
               />
             ) : (
-              <span className="inline-flex h-10 items-center whitespace-nowrap text-sm text-slate-600 tabular">
-                {formatDateFr(query.range.from)} - {formatDateFr(query.range.to)}
-              </span>
+              <PeriodReadout range={query.range} compare={data.previousRange} />
             )}
             {canFilter && data.campaigns.length > 0 && (
               <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
