@@ -76,16 +76,18 @@ export default async function DashboardEditPage(props: PageProps<"/admin/dashboa
                   ))}
                 </select>
               </Field>
-              <fieldset className="space-y-2">
-                <legend className="text-sm font-medium text-slate-700">Comptes inclus</legend>
-                {accounts.map((a) => (
-                  <label key={a.id} className="flex items-center gap-2 text-sm">
-                    <input type="checkbox" name="adAccountIds" value={a.id} defaultChecked={dashboard.adAccountIds.includes(a.id)} />
-                    {plainDashes(a.name)} <span className="text-xs text-slate-500">({a.currency})</span>
-                  </label>
-                ))}
-                <p className="text-xs text-slate-500">Aucune case cochée = tous les comptes du client.</p>
-              </fieldset>
+              {accounts.length > 1 && (
+                <fieldset className="space-y-2">
+                  <legend className="text-sm font-medium text-slate-700">Comptes inclus</legend>
+                  {accounts.map((a) => (
+                    <label key={a.id} className="flex items-center gap-2 text-sm">
+                      <input type="checkbox" name="adAccountIds" value={a.id} defaultChecked={dashboard.adAccountIds.includes(a.id)} />
+                      {plainDashes(a.name)} <span className="text-xs text-slate-500">({a.currency})</span>
+                    </label>
+                  ))}
+                  <p className="text-xs text-slate-500">Aucune case cochée = tous les comptes du client.</p>
+                </fieldset>
+              )}
               <fieldset className="space-y-2">
                 <legend className="text-sm font-medium text-slate-700">Options</legend>
                 <label className="flex items-center gap-2 text-sm">

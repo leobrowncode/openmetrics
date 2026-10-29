@@ -1,5 +1,6 @@
 import "server-only";
 import { and, asc, between, eq, inArray, sql } from "drizzle-orm";
+import { describeConversionActions, type ConversionDisplay } from "@/lib/conversion-actions";
 import { includeAccountInDashboard } from "@/lib/synthetic-display";
 import { addSums, emptySums, type Sums } from "@/lib/metrics";
 import { formatDateFr, previousPeriod, type DateRange } from "@/lib/periods";
@@ -28,6 +29,7 @@ export interface DashboardData {
   series: Array<{ date: string } & Sums>;
   byCampaign: Array<{ campaignId: string; name: string } & Sums>;
   warnings: string[];
+  conversion: ConversionDisplay;
 }
 
 type Dashboard = typeof dashboards.$inferSelect;
@@ -113,9 +115,11 @@ export async function getDashboardData(
   if (timezones.length > 1) {
     warnings.push(`Les comptes utilisent plusieurs fuseaux horaires (${timezones.join(", ")}) : les jours ne sont pas alignés.`);
   }
+  const conversion = describeConversionActions(accounts.map((a) => ({ name: a.name, types: a.conversionActionTypes })));
   if (accounts.some((a) => a.conversionActionTypes.length === 0)) {
     warnings.push("Le type de conversion n'est pas configuré pour au moins un compte : les conversions affichées sont à 0.");
   }
+  if (conversion.warning) warnings.push(conversion.warning);
 
   const previousRange = query.compare ? previousPeriod(query.range) : null;
   const earliestNeeded = previousRange?.from ?? query.range.from;
@@ -143,6 +147,7 @@ export async function getDashboardData(
     series: [] as DashboardData["series"],
     byCampaign: [] as DashboardData["byCampaign"],
     warnings,
+    conversion,
   };
   if (accountIds.length === 0) {
     if (!syntheticOmitted) warnings.push("Aucun compte publicitaire actif n'est associé à ce dashboard.");

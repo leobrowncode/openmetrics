@@ -49,7 +49,7 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await expect(page.locator("p").filter({ hasText: new RegExp(`^${dashboardName}$`) })).toHaveCount(0);
   await expect(page.getByText("Association Horizon", { exact: true })).toHaveCount(1);
 
-  for (const title of ["Investissements", "Impressions et clics", "CTR et CPC", "Conversions"]) {
+  for (const title of ["Investissements", "Impressions et clics", "CTR et CPC", "Achats"]) {
     await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
   }
   await expect(page.getByText("Dernière actualisation")).toBeVisible();
@@ -73,7 +73,7 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   await expect(campaignCard.getByRole("button", { name: "Tableau copié" })).toBeVisible();
   const pasted = await page.evaluate(() => navigator.clipboard.readText());
   const lines = pasted.trim().split("\n");
-  expect(lines[0]).toBe("Campagne\tDépenses\tImpressions\tClics lien\tCTR lien\tCPC lien\tConversions\tCVR\tROAS");
+  expect(lines[0]).toBe("Campagne\tDépenses\tImpressions\tClics lien\tCTR lien\tCPC lien\tAchats\tTaux de conversion (achats)\tROAS (achats)");
   expect(lines.at(-1)?.startsWith("Total\t")).toBe(true);
   expect(lines.at(-1)).toContain(spend.replace(/\u202F|\u00A0/g, " "));
 
@@ -150,6 +150,48 @@ test("private link: viewer access, filters, isolation and revocation", async ({ 
   if (SHOTS) await fresh.screenshot({ path: `${SHOTS}/05-viewer-revoked.png` });
 });
 
+test("bilan freezes the chosen campaigns and period", async ({ page, browser }) => {
+  await login(page);
+  await page.goto("/admin/clients");
+  await page.getByRole("link", { name: /Association Horizon/ }).click();
+  await expect(page.getByRole("heading", { name: "Ajouter un compte" })).toHaveCount(0);
+
+  await openDashboard(page, "Association Horizon");
+  await expect(page.getByText("offsite_conversion.fb_pixel_purchase")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Achats", exact: true })).toBeVisible();
+
+  await page.getByRole("button", { name: "Toutes les campagnes" }).click();
+  await page.getByLabel("FDA - Broad - Dons").check();
+  await page.getByRole("button", { name: "Appliquer" }).click();
+  await page.getByText("Générer un bilan", { exact: true }).click();
+  await page.getByRole("button", { name: "Enregistrer le bilan" }).click();
+  await expect(page).toHaveURL(/\/bilans\/[0-9a-f-]{36}$/);
+  await expect(page.getByRole("heading", { name: "Bilan - FDA - Broad - Dons" })).toBeVisible();
+  await expect(page.getByText("Campagnes : FDA - Broad - Dons")).toBeVisible();
+  await expect(page.getByLabel("Période")).toHaveCount(0);
+  const spend = await page.getByTestId("kpi-spend").first().innerText();
+
+  await page.getByLabel("Destinataire / libellé").fill("E2E bilan");
+  await page.getByRole("button", { name: "Générer le lien" }).click();
+  const url = await page.getByLabel("Lien privé").inputValue();
+
+  const viewer = await viewerPage(browser);
+  await viewer.goto(url.replace(/^https?:\/\/[^/]+/, ""));
+  await expect(viewer.getByRole("heading", { name: "Bilan - FDA - Broad - Dons" })).toBeVisible();
+  await expect(viewer.getByText("Campagnes : FDA - Broad - Dons")).toBeVisible();
+  await expect(viewer.getByLabel("Période")).toHaveCount(0);
+  await expect(viewer.getByTestId("kpi-spend").first()).toHaveText(spend);
+
+  const linkPath = new URL(viewer.url()).pathname;
+  const tampered = await viewer.request.get(`${linkPath}/data?period=last_7_days&campaigns=1`);
+  expect(tampered.status()).toBe(200);
+  const json = await tampered.json();
+  expect(json.query.period).toBe("custom");
+  expect(json.query.campaignIds).not.toContain("1");
+  expect(json.data.byCampaign).toHaveLength(1);
+  expect(json.data.byCampaign[0].name).toBe("FDA — Broad — Dons");
+});
+
 test("malformed or missing tokens are rejected", async ({ browser }) => {
   const viewer = await viewerPage(browser);
   await viewer.goto("/share#t=not-a-real-token");
@@ -169,7 +211,7 @@ test("admin can configure conversions, widgets and monitor syncs", async ({ page
   await page.goto("/admin/clients");
   await page.getByRole("link", { name: /Maison Lumen/ }).click();
   await page.locator("summary", { hasText: "Conversions comptées" }).click();
-  await page.getByRole("checkbox", { name: /^purchase \(/ }).check();
+  await page.getByRole("checkbox", { name: /^Achat purchase\b/ }).check();
   await page.getByRole("button", { name: "Enregistrer et recalculer" }).click();
   await expect(page.getByText(/doubleraient les conversions/)).toBeVisible();
 

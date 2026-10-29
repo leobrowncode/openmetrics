@@ -12,6 +12,7 @@ import {
   XAxis,
   YAxis,
 } from "recharts";
+import { presentMetric, type ConversionNaming } from "@/lib/conversion-actions";
 import { DEFAULT_CHART_COLORS } from "@/lib/chart-colors";
 import { computeMetric, formatMetric, getMetric, type MetricKey, type Sums } from "@/lib/metrics";
 import type { DateRange } from "@/lib/periods";
@@ -26,6 +27,7 @@ export function TimeSeriesChart({
   range,
   currency,
   chartStyle = "line",
+  naming = null,
   colors = DEFAULT_CHART_COLORS,
 }: {
   title?: string;
@@ -34,6 +36,7 @@ export function TimeSeriesChart({
   range: DateRange;
   currency: string;
   chartStyle?: "line" | "bar" | "area";
+  naming?: ConversionNaming | null;
   colors?: readonly string[];
 }) {
   const granularity = pickGranularity(range);
@@ -58,7 +61,7 @@ export function TimeSeriesChart({
     <div>
       <div className="mb-3 flex items-center justify-between gap-2">
         {title ? <h3 className="text-sm font-medium text-slate-700">{title}</h3> : <span />}
-        <CopyTableButton matrix={seriesTableMatrix(metrics, buckets, granularity, currency)} />
+        <CopyTableButton matrix={seriesTableMatrix(metrics, buckets, granularity, currency, naming)} />
       </div>
       <div className="h-72 w-full">
         <p className="mb-2 text-xs text-slate-400">
@@ -73,10 +76,10 @@ export function TimeSeriesChart({
             <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: "#64748b" }} tickLine={false} axisLine={false} width={64} tickFormatter={compact(metrics[1])} />
           )}
           <Tooltip
-            formatter={(value, name) => [formatMetric(name as MetricKey, typeof value === "number" ? value : null, currency), getMetric(name as MetricKey).label]}
+            formatter={(value, name) => [formatMetric(name as MetricKey, typeof value === "number" ? value : null, currency), presentMetric(name as MetricKey, naming).label]}
             contentStyle={{ borderRadius: 8, borderColor: "#e2e8f0", fontSize: 12 }}
           />
-          {metrics.length > 1 && <Legend formatter={(value) => getMetric(value as MetricKey).label} wrapperStyle={{ fontSize: 12 }} />}
+          {metrics.length > 1 && <Legend formatter={(value) => presentMetric(value as MetricKey, naming).label} wrapperStyle={{ fontSize: 12 }} />}
           {metrics.map((key, i) => {
             const axis = dualAxis && i === 1 ? "right" : "left";
             const color = colors[i % colors.length] ?? DEFAULT_CHART_COLORS[i % DEFAULT_CHART_COLORS.length];

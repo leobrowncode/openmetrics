@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useSyncExternalStore, useTransition } from "react";
+import { conversionSectionTitle, conversionWidgetTitle } from "@/lib/conversion-actions";
 import type { DashboardConfig, DashboardWidget } from "@/lib/dashboard-config";
 import type { DashboardPayload } from "@/server/dashboards/query";
 import { formatDateFr } from "@/lib/periods";
@@ -19,6 +20,7 @@ import { CampaignTable } from "./CampaignTable";
 import { ChartColorEditor } from "./ChartColorEditor";
 import { CustomizePanel } from "./CustomizePanel";
 import { CampaignFilter, PeriodPicker } from "./Filters";
+import { GenerateBilan } from "./GenerateBilan";
 import { KpiCards } from "./KpiCards";
 import { TimeSeriesChart } from "./TimeSeriesChart";
 
@@ -30,6 +32,7 @@ export function DashboardView({
   dashboardId,
   title,
   subtitle,
+  locked = false,
 }: {
   config: DashboardConfig;
   initial: DashboardPayload;
@@ -38,6 +41,8 @@ export function DashboardView({
   dashboardId: string;
   title: string;
   subtitle?: string;
+  /** Bilan: period and campaigns stay those saved with the bilan. */
+  locked?: boolean;
 }) {
   const [payload, setPayload] = useState(initial);
   const [chartColors, setChartColors] = useState<string[]>(() => [...config.chartColors]);
@@ -49,9 +54,10 @@ export function DashboardView({
   const pageTitle = plainDashes(title);
   const pageSubtitle = subtitle ? plainDashes(subtitle) : undefined;
   const { data, query } = payload;
-  const canChangePeriod = mode === "admin" || config.viewer.allowPeriodChange;
-  const canFilter = mode === "admin" || config.viewer.allowCampaignFilter;
-  const canCustomize = mode === "viewer" && config.viewer.allowCustomize;
+  const canChangePeriod = !locked && (mode === "admin" || config.viewer.allowPeriodChange);
+  const canFilter = !locked && (mode === "admin" || config.viewer.allowCampaignFilter);
+  const canCustomize = !locked && mode === "viewer" && config.viewer.allowCustomize;
+  const selectedNames = data.campaigns.filter((c) => data.selectedCampaignIds.includes(c.id)).map((c) => plainDashes(c.name));
 
   const personalLayout = canCustomize ? mergeViewerLayout(config, storedLayout) : null;
   const shown = personalLayout ? applyViewerLayout(config, personalLayout) : config;
@@ -91,19 +97,22 @@ export function DashboardView({
   const renderWidget = (widget: DashboardWidget) => {
     switch (widget.type) {
       case "kpi":
-        return <KpiCards metrics={widget.metrics} totals={data.totals} previousTotals={data.previousTotals} currency={data.currency} />;
-      case "timeseries":
+        return <KpiCards metrics={widget.metrics} totals={data.totals} previousTotals={data.previousTotals} currency={data.currency} naming={data.conversion.naming} />;
+      case "timeseries": {
+        const seriesTitle = conversionWidgetTitle(widget.title, widget.metrics, data.conversion.naming);
         return (
           <TimeSeriesChart
-            title={widget.title ? plainDashes(widget.title) : undefined}
+            title={seriesTitle ? plainDashes(seriesTitle) : undefined}
             metrics={widget.metrics}
             series={data.series}
             range={data.range}
             currency={data.currency}
             chartStyle={widget.chartStyle}
+            naming={data.conversion.naming}
             colors={chartColors}
           />
         );
+      }
       case "campaign_table":
         return (
           <CampaignTable
@@ -112,6 +121,7 @@ export function DashboardView({
             rows={data.byCampaign}
             totals={data.totals}
             currency={data.currency}
+            naming={data.conversion.naming}
           />
         );
     }
@@ -137,6 +147,16 @@ export function DashboardView({
                 vs {formatDateFr(data.previousRange.from)} - {formatDateFr(data.previousRange.to)}
               </p>
             )}
+            {data.conversion.technical && (
+              <p className="text-sm text-slate-600">
+                Action Meta : <code className="text-xs">{data.conversion.technical}</code>
+              </p>
+            )}
+            {locked && (
+              <p className="text-sm text-slate-600">
+                Campagnes : {selectedNames.length > 0 ? selectedNames.join(", ") : "aucune campagne de ce bilan dans le périmètre"}
+              </p>
+            )}
           </div>
           <div className="relative flex flex-wrap items-center gap-2" aria-busy={pending}>
             {canChangePeriod ? (
@@ -154,6 +174,9 @@ export function DashboardView({
             )}
             {canFilter && data.campaigns.length > 0 && (
               <CampaignFilter key={query.campaignIds.join(",")} campaigns={data.campaigns} selected={query.campaignIds} onChange={(ids) => load({ campaigns: ids })} />
+            )}
+            {mode === "admin" && !locked && (
+              <GenerateBilan dashboardId={dashboardId} campaignIds={query.campaignIds} campaigns={data.campaigns} range={query.range} />
             )}
             {mode === "admin" && (
               <ChartColorEditor dashboardId={dashboardId} initialColors={config.chartColors} onColorsChange={setChartColors} />
@@ -189,7 +212,7 @@ export function DashboardView({
             <section key={section.id} aria-labelledby={`h-${section.id}`}>
               <h2 id={`h-${section.id}`} className="mb-3 flex items-center gap-2 text-base font-semibold text-slate-900">
                 <span className="h-5 w-1.5 rounded-full" style={{ backgroundColor: chartColors[0] }} aria-hidden />
-                {plainDashes(section.title)}
+                {plainDashes(conversionSectionTitle(section.title, data.conversion.naming))}
               </h2>
               <div className="space-y-4">
                 {section.widgets.map((widget) => (

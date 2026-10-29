@@ -7,6 +7,7 @@ import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { dashboards } from "@/server/db/schema";
+import { listBilans } from "@/server/dashboards/bilans";
 import { listShareLinks, shareLinkState } from "@/server/share/share-links";
 import {
   createShareLinkAction,
@@ -42,6 +43,7 @@ export default async function SharePage(props: PageProps<"/admin/dashboards/[das
   const [dashboard] = await db.select().from(dashboards).where(eq(dashboards.id, dashboardId));
   if (!dashboard) notFound();
   const links = await listShareLinks(db, dashboardId);
+  const bilanName = new Map((await listBilans(db, dashboardId)).map((bilan) => [bilan.id, bilan.name]));
   const now = new Date();
 
   return (
@@ -77,6 +79,9 @@ export default async function SharePage(props: PageProps<"/admin/dashboards/[das
                         <p className="font-medium text-slate-900">
                           {plainDashes(link.label)} <ShareStateBadge state={state} />
                         </p>
+                        {link.bilanId && (
+                          <p className="text-xs text-slate-600">Bilan : {bilanName.get(link.bilanId) ?? "introuvable"}</p>
+                        )}
                         <p className="text-xs text-slate-500">
                           Créé le {formatDateTime(link.createdAt)} · expire {link.expiresAt ? `le ${formatDateTime(link.expiresAt)}` : "jamais"}
                           {link.revokedAt && ` · révoqué le ${formatDateTime(link.revokedAt)}`}

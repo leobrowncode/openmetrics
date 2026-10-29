@@ -76,46 +76,4 @@ export function normalizeInsightRow(row: RawInsightRow, conversionActionTypes: s
   };
 }
 
-/**
- * Meta reports one event under several aliases (e.g. a pixel purchase appears
- * as `purchase`, `omni_purchase` and `offsite_conversion.fb_pixel_purchase`).
- * Selecting two aliases of the same event would double count conversions.
- */
-const ALIAS_GROUPS: Array<{ label: string; types: string[] }> = [
-  {
-    label: "Achat",
-    types: [
-      "purchase",
-      "omni_purchase",
-      "offsite_conversion.fb_pixel_purchase",
-      "onsite_web_purchase",
-      "onsite_web_app_purchase",
-      "web_in_store_purchase",
-      "app_custom_event.fb_mobile_purchase",
-      "onsite_conversion.purchase",
-    ],
-  },
-  {
-    label: "Prospect (lead)",
-    types: ["lead", "onsite_conversion.lead_grouped", "offsite_conversion.fb_pixel_lead", "leadgen_grouped", "onsite_conversion.lead"],
-  },
-  {
-    label: "Inscription",
-    types: ["complete_registration", "omni_complete_registration", "offsite_conversion.fb_pixel_complete_registration"],
-  },
-  {
-    label: "Ajout au panier",
-    types: ["add_to_cart", "omni_add_to_cart", "offsite_conversion.fb_pixel_add_to_cart"],
-  },
-  {
-    label: "Paiement initié",
-    types: ["initiate_checkout", "omni_initiated_checkout", "offsite_conversion.fb_pixel_initiate_checkout"],
-  },
-];
-
-export function findOverlappingActionTypes(types: string[]): Array<{ label: string; types: string[] }> {
-  const selected = new Set(types);
-  return ALIAS_GROUPS.map((g) => ({ label: g.label, types: g.types.filter((t) => selected.has(t)) })).filter(
-    (g) => g.types.length > 1,
-  );
-}
+export { findOverlappingActionTypes } from "@/lib/conversion-actions";

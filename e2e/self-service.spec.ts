@@ -102,14 +102,14 @@ test("new client offers the Meta accounts already connected, in alphabetical ord
   await expect(list.getByRole("option")).toHaveCount(8);
   const names = await list.getByRole("option").allInnerTexts();
   expect(names.map((name) => name.split("\n")[0])).toEqual([
-    "Atelier Nord — Trafic (démo)",
-    "Boulangerie Martin — Catalogue (démo)",
-    "Café des Arts — Notoriété (démo)",
-    "École du Regard — Leads (démo)",
-    "Le Rocher — Dons (démo)",
-    "Librairie Page — Trafic (démo)",
-    "Lumen Studio — Prospection (démo)",
-    "Zéphyr Voyages — Catalogue (démo)",
+    "Atelier Nord - Trafic (démo)",
+    "Boulangerie Martin - Catalogue (démo)",
+    "Café des Arts - Notoriété (démo)",
+    "École du Regard - Leads (démo)",
+    "Le Rocher - Dons (démo)",
+    "Librairie Page - Trafic (démo)",
+    "Lumen Studio - Prospection (démo)",
+    "Zéphyr Voyages - Catalogue (démo)",
   ]);
 
   await page.getByRole("combobox", { name: "Rechercher un compte" }).fill("l");

@@ -22,6 +22,13 @@
       "when": 1792702943009,
       "tag": "0002_site_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1793212800000,
+      "tag": "0003_bilans",
+      "breakpoints": true
     }
   ]
 }
