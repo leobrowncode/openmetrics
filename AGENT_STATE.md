@@ -40,7 +40,7 @@ Current roadmap position:
 - Avoid correlated subqueries with Drizzle single-table selects (columns render unqualified); use grouped counts (`src/server/admin/counts.ts`).
 - No attribution params are sent: Meta applies the account's attribution setting (same as Ads Manager since 2026-01-12).
 - Every dashboard query is scoped by `dashboard.clientId`; viewer access re-verifies the token hash on every request.
-- Share tokens and session tokens are stored as HMAC-SHA256 hashes only; Meta tokens are AES-256-GCM encrypted.
+- Share and session tokens are checked via HMAC-SHA256. Share tokens are also stored AES-256-GCM encrypted so an admin can copy the URL after reload. Meta tokens are AES-256-GCM encrypted and never sent to the browser.
 - See `docs/DECISIONS.md`, `docs/METRICS.md`, `docs/SECURITY.md`.
 
 ## Known limitations / blockers

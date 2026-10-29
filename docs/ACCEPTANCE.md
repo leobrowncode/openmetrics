@@ -8,7 +8,7 @@ Dernière mise à jour : 19/10/2026.
 
 | Critère | Statut | Preuve |
 | --- | --- | --- |
-| Token de lien aléatoire 256 bits, empreinte HMAC seule stockée | ✅ | `tests/share-links.test.ts` |
+| Token de lien aléatoire 256 bits, empreinte HMAC et copie chiffrée | ✅ | `tests/share-links.test.ts` |
 | Vérification serveur à chaque accès, révocation et expiration immédiates | ✅ | tests d'intégration + `e2e/mvp.spec.ts` |
 | Token absent des URL envoyées au serveur, des logs et du Referer | ✅ | e2e (aucune requête ne contient le token) |
 | Pages Viewer non indexées, non mises en cache | ✅ | e2e (en-têtes) |

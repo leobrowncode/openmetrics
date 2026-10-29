@@ -200,7 +200,7 @@ export const bilans = pgTable(
   (t) => [index("bilans_dashboard_idx").on(t.dashboardId)],
 );
 
-/** Private viewer links. Only an HMAC-SHA256 fingerprint of the token is stored. */
+/** Private viewer links. The HMAC fingerprint is what access checks use. The token is also stored encrypted so an admin can copy the URL again. */
 export const shareLinks = pgTable(
   "share_links",
   {
@@ -212,6 +212,8 @@ export const shareLinks = pgTable(
     bilanId: text("bilan_id").references(() => bilans.id, { onDelete: "cascade" }),
     label: text("label").notNull(),
     tokenHash: text("token_hash").notNull().unique(),
+    /** AES-256-GCM ciphertext of the raw token. Null for links created before it was kept. */
+    encryptedToken: text("encrypted_token"),
     expiresAt: timestamp("expires_at", { withTimezone: true }),
     revokedAt: timestamp("revoked_at", { withTimezone: true }),
     lastAccessedAt: timestamp("last_accessed_at", { withTimezone: true }),

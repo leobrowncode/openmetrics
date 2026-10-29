@@ -46,7 +46,7 @@ Vercel → projet → **Settings → Environment Variables** (environnement *Pro
 
 | Variable | Valeur | Remarque |
 | --- | --- | --- |
-| `TOKEN_ENCRYPTION_KEY` | `openssl rand -hex 32` | Chiffre les tokens Meta. Si elle est perdue ou changée, il faut reconnecter Meta. |
+| `TOKEN_ENCRYPTION_KEY` | `openssl rand -hex 32` | Chiffre les tokens Meta et la copie des liens privés. Si elle est perdue ou changée, il faut reconnecter Meta, et les liens déjà créés restent valides mais ne s'affichent plus : il faut les renouveler. |
 | `TOKEN_HASH_SECRET` | `openssl rand -hex 32` | Empreintes des liens privés et sessions. La changer invalide tous les liens et déconnecte tout le monde. |
 | `CRON_SECRET` | `openssl rand -hex 24` | Protège la synchronisation automatique (Vercel l'envoie seul). |
 | `APP_URL` | `https://reporting.agence.fr` | Adresse publique ; sert aux liens privés et au retour Facebook. |

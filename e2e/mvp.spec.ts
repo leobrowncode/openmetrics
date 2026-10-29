@@ -21,12 +21,22 @@ async function createShareLink(page: Page, label: string): Promise<string> {
   await page.getByRole("link", { name: "Partage" }).click();
   await page.getByLabel("Destinataire / libellé").fill(label);
   await page.getByRole("button", { name: "Générer le lien" }).click();
+  const field = page.getByRole("textbox", { name: `Lien de ${label}`, exact: true });
+  await expect(field).toBeVisible();
+  const shown = await field.inputValue();
+  expect(shown).toMatch(/\/share#t=[A-Za-z0-9_-]{43}$/);
   await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-  const copy = page.getByRole("button", { name: `Copier le lien de ${label}` });
+  const copy = page.getByRole("button", { name: `Copier le lien de ${label}`, exact: true });
   await expect(copy).toBeVisible();
+  const fieldBox = await field.boundingBox();
+  const copyBox = await copy.boundingBox();
+  expect(fieldBox && copyBox && fieldBox.x + fieldBox.width <= copyBox.x + 1).toBe(true);
   await copy.click();
-  await expect(page.getByRole("button", { name: `Lien de ${label} copié` })).toBeVisible();
-  return page.evaluate(() => navigator.clipboard.readText());
+  await expect(page.getByRole("button", { name: `Lien de ${label} copié`, exact: true })).toBeVisible();
+  expect(await page.evaluate(() => navigator.clipboard.readText())).toBe(shown);
+  await page.reload();
+  await expect(page.getByRole("textbox", { name: `Lien de ${label}`, exact: true })).toHaveValue(shown);
+  return shown;
 }
 
 async function viewerPage(browser: Browser): Promise<Page> {

@@ -2,6 +2,7 @@ import "server-only";
 import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { bilans, dashboards, shareLinks } from "../db/schema";
+import { decryptSecret, encryptSecret } from "../security/encryption";
 import { generateToken, hashToken, isWellFormedToken } from "../security/tokens";
 
 export type ShareLink = typeof shareLinks.$inferSelect;
@@ -15,8 +16,20 @@ export function shareLinkState(link: Pick<ShareLink, "revokedAt" | "expiresAt">,
   return "active";
 }
 
-/** The token is returned once and never stored; only its keyed fingerprint is. */
+/** Thrown when a share link cannot be created for the requested dashboard. */
 export class ShareLinkError extends Error {}
+
+/** Admin-facing URL. Null when this link was created before the token was kept, or the ciphertext cannot be read. */
+export function shareLinkUrl(origin: string, encryptedToken: string | null): string | null {
+  if (!encryptedToken) return null;
+  try {
+    const token = decryptSecret(encryptedToken);
+    if (!isWellFormedToken(token)) return null;
+    return `${origin.replace(/\/$/, "")}/share#t=${token}`;
+  } catch {
+    return null;
+  }
+}
 
 export async function createShareLink(
   db: Db,
@@ -36,6 +49,7 @@ export async function createShareLink(
       dashboardId: input.dashboardId,
       label: input.label,
       tokenHash: hashToken(token, "share"),
+      encryptedToken: encryptSecret(token),
       expiresAt: input.expiresAt,
       bilanId: input.bilanId ?? null,
     })
