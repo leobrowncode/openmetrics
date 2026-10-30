@@ -1,5 +1,6 @@
 import { eq } from "drizzle-orm";
 import { beforeEach, describe, expect, it } from "vitest";
+import { addDays, todayInTimezone } from "@/lib/periods";
 import type { Db } from "@/server/db/client";
 import { shareLinks } from "@/server/db/schema";
 import { getDashboardData } from "@/server/dashboards/data";
@@ -139,5 +140,53 @@ describe("client data isolation", () => {
     expect(filtered.totals.spend).toBe(10);
     expect(filtered.selectedCampaignIds).toEqual(["c2"]);
     expect(filtered.dataFrom).toBe("2026-10-01");
+  });
+
+  it("since the start runs from the first stored day through yesterday", async () => {
+    const db = await testDb();
+    const a = await seedClient(db, "A", "act_1");
+    await syncAdAccount(db, a.account.id, {
+      trigger: "manual",
+      range: { from: "2026-09-29", to: "2026-10-02" },
+      sourceFactory: () =>
+        fakeSource(() => [
+          insightRow("c1", "2026-09-29", 4),
+          insightRow("c1", "2026-10-01", 10, 1),
+          insightRow("c2", "2026-10-01", 5),
+          insightRow("c2", "2026-10-02", 5, 2),
+        ]),
+    });
+    const end = addDays(todayInTimezone("Europe/Paris"), -1);
+    const data = await getDashboardData(db, a.dashboard, {
+      range: { from: end, to: end },
+      compare: true,
+      sinceStart: true,
+    });
+    expect(data.dataFrom).toBe("2026-09-29");
+    expect(data.range).toEqual({ from: "2026-09-29", to: end });
+    expect(data.previousRange?.to).toBe("2026-09-28");
+    expect(data.series.map((s) => s.date)).toEqual(["2026-09-29", "2026-10-01", "2026-10-02"]);
+    expect(data.totals.spend).toBe(24);
+
+    const filtered = await getDashboardData(db, a.dashboard, {
+      range: { from: end, to: end },
+      campaignIds: ["c2"],
+      compare: false,
+      sinceStart: true,
+    });
+    expect(filtered.dataFrom).toBe("2026-10-01");
+    expect(filtered.range).toEqual({ from: "2026-10-01", to: end });
+    expect(filtered.totals.spend).toBe(10);
+    expect(filtered.previousRange).toBeNull();
+
+    const bare = await seedClient(db, "Bare", "act_bare");
+    const empty = await getDashboardData(db, bare.dashboard, {
+      range: { from: "2020-01-01", to: "2020-01-02" },
+      compare: false,
+      sinceStart: true,
+    });
+    expect(empty.dataFrom).toBeNull();
+    expect(empty.range).toEqual({ from: end, to: end });
+    expect(empty.series).toEqual([]);
   });
 });

@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { compareLabels } from "@/lib/account-search";
-import { PERIOD_LABELS, PERIOD_PRESETS, formatDateFr, isIsoDate, rangeFromFirstData, type DateRange, type PeriodPreset } from "@/lib/periods";
+import { PERIOD_LABELS, PERIOD_PRESETS, formatDateFr, type DateRange, type PeriodPreset } from "@/lib/periods";
 import { plainDashes } from "@/lib/text";
 import { buttonClass, cx, inputClass, toolbarButtonClass, toolbarControlClass } from "../ui";
 
@@ -28,61 +28,24 @@ function CompareReadout({ compare }: { compare: DateRange }) {
   );
 }
 
-function DataStartButton({
-  dataFrom,
-  from,
-  to,
-  campaignCount,
-  disabled,
-  onApply,
-}: {
-  dataFrom?: string | null;
-  from: string;
-  to: string;
-  campaignCount: number;
-  disabled?: boolean;
-  onApply: (range: DateRange) => void;
-}) {
-  if (!dataFrom || !isIsoDate(from) || !isIsoDate(to)) return null;
-  const next = rangeFromFirstData(dataFrom, to);
-  if (next.from === from && next.to === to) return null;
-  const clamped = next.from !== dataFrom;
-  const label = campaignCount === 1 ? "Début de campagne" : "Depuis le début";
-  const title = clamped
-    ? `Les données commencent le ${formatDateFr(dataFrom)}. La période est limitée à 3 ans, donc elle commence le ${formatDateFr(next.from)}.`
-    : campaignCount === 1
-      ? `Première donnée de cette campagne : ${formatDateFr(dataFrom)}.`
-      : `Première donnée disponible : ${formatDateFr(dataFrom)}.`;
-  return (
-    <button type="button" className={toolbarButtonClass} disabled={disabled} title={title} onClick={() => onApply(next)}>
-      {label}
-      <span className="font-normal tabular text-slate-500">· {formatDateFr(next.from)}</span>
-    </button>
-  );
-}
-
 export function PeriodPicker({
   period,
   range,
   compare,
-  dataFrom,
-  campaignCount = 0,
   disabled,
   onChange,
 }: {
-  period: PeriodPreset | "custom";
+  period: PeriodPreset | "custom" | "since_start";
   range: DateRange;
   compare?: DateRange | null;
-  dataFrom?: string | null;
-  campaignCount?: number;
   disabled?: boolean;
-  onChange: (next: { period: PeriodPreset } | { period: "custom"; from: string; to: string }) => void;
+  onChange: (
+    next: { period: PeriodPreset } | { period: "since_start" } | { period: "custom"; from: string; to: string },
+  ) => void;
 }) {
   const [custom, setCustom] = useState(period === "custom");
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
-  const draftFrom = custom ? from : range.from;
-  const draftTo = custom ? to : range.to;
 
   return (
     <div className="flex flex-wrap items-center gap-2">
@@ -92,12 +55,14 @@ export function PeriodPicker({
         value={custom ? "custom" : period}
         disabled={disabled}
         onChange={(e) => {
-          if (e.target.value === "custom") {
+          const value = e.target.value;
+          if (value === "custom") {
             setCustom(true);
             return;
           }
           setCustom(false);
-          onChange({ period: e.target.value as PeriodPreset });
+          if (value === "since_start") onChange({ period: "since_start" });
+          else onChange({ period: value as PeriodPreset });
         }}
       >
         {PERIOD_PRESETS.map((p) => (
@@ -105,6 +70,7 @@ export function PeriodPicker({
             {PERIOD_LABELS[p]}
           </option>
         ))}
+        <option value="since_start">Depuis le début</option>
         <option value="custom">Personnalisée…</option>
       </select>
       {custom ? (
@@ -132,14 +98,6 @@ export function PeriodPicker({
       ) : (
         <PeriodReadout range={range} compare={compare} />
       )}
-      <DataStartButton
-        dataFrom={dataFrom}
-        from={draftFrom}
-        to={draftTo}
-        campaignCount={campaignCount}
-        disabled={disabled}
-        onApply={(next) => onChange({ period: "custom", from: next.from, to: next.to })}
-      />
     </div>
   );
 }

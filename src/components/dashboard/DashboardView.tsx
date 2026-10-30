@@ -160,8 +160,6 @@ export function DashboardView({
                 period={query.period}
                 range={query.range}
                 compare={data.previousRange}
-                dataFrom={data.dataFrom}
-                campaignCount={query.campaignIds.length}
                 disabled={pending}
                 onChange={(next) => load(next.period === "custom" ? next : { period: next.period })}
               />
