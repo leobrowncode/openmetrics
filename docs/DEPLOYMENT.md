@@ -1,5 +1,7 @@
 # Installation chez le client (hébergement autonome)
 
+La liste ordonnée des actions humaines, les niveaux d'accès Meta et le passage vers un SaaS sont dans [`LANCEMENT.md`](LANCEMENT.md) (relu le 30 octobre 2026). Cette page reste le résumé technique.
+
 Objectif : l'agence possède **sa propre instance**. Elle détient le compte d'hébergement, la base de données, l'app Meta et toutes les données, et peut se connecter, ajouter des collaborateurs et connecter Meta **sans intervention du développeur**.
 
 > Les « secrets Cursor » ne concernent que l'environnement de développement de l'agent (tests contre un vrai compte Meta). Ils ne sont jamais utilisés par l'instance du client. En production, tous les secrets sont saisis par le client dans **son** hébergement.
@@ -16,7 +18,7 @@ Objectif : l'agence possède **sa propre instance**. Elle détient le compte d'h
 
 ## 0. Copier le code
 
-Le dépôt de référence (`leobrowncode/openmetrics`) reste au développeur, qui peut le réutiliser pour d'autres clients. Le client travaille sur **sa copie**, sur son compte GitHub **personnel** : Vercel Hobby refuse les dépôts privés appartenant à une organisation GitHub.
+Le dépôt de référence (`leobrowncode/openmetrics`) reste au développeur, qui peut le réutiliser pour d'autres clients. Le client travaille sur **sa copie**, sur son compte GitHub **personnel** : un projet Vercel Hobby ne se relie pas à un dépôt appartenant à une organisation Git ([limites](https://vercel.com/docs/limits), relu le 30 octobre 2026). Un dépôt public ou privé sur un compte personnel convient.
 
 | | Fork (recommandé) | Copie privée |
 | --- | --- | --- |
@@ -74,12 +76,13 @@ Aucune de ces valeurs n'est envoyée au navigateur.
 
 Ensuite, dans l'application : **Connexions Meta → Se connecter avec Facebook**. Seule la permission `ads_read` (lecture des statistiques) est demandée. Aucune fonction de l'application ne peut modifier une campagne ou un budget.
 
-Points à confirmer lors du premier essai réel (non vérifiables sans compte Meta) :
+Règles Meta confirmées dans la doc officielle le 30 octobre 2026 (détail et ordre des clics dans [`LANCEMENT.md`](LANCEMENT.md)) :
 
-- Tant que l'app reste en **mode développement**, seules les personnes ayant un rôle sur l'app peuvent l'autoriser : ajouter les collaborateurs de l'agence dans *Rôles de l'app* suffit pour un usage interne.
-- Depuis mai 2026, Meta nomme les niveaux d'accès Marketing API *Limited* / *Full*. Le niveau *Limited* a des quotas plus faibles ; le passage en *Full* se demande via *App Review* une fois le volume d'appels atteint.
+- En **mode développement**, l'app ne peut demander des permissions qu'aux personnes qui ont un rôle (administrateur, développeur, testeur). Pour une agence dont seuls ces collaborateurs cliquent, cela suffit.
+- Deux échelles différentes : la permission `ads_read` (accès standard d'office, accès avancé via App Review si des personnes sans rôle doivent autoriser l'app) et le **Marketing API Access Tier**. Depuis le 4 mai 2026, le palier bas s'appelle *Limited* et le palier haut *Full*. *Limited* est le défaut. *Full* se demande dans App Review une fois 500 appels réussis atteints sur 15 jours et moins de 15 % d'erreurs sur les 500 derniers appels.
+- La vérification d'entreprise n'est pas exigée pour passer l'app en Live, mais Meta l'exige pour lire des données que l'entreprise ne possède pas.
 
-Alternative sans app Meta : générer un token d'utilisateur système (`ads_read`) dans le Business Manager et le coller dans **Connexions Meta → Option avancée**.
+Alternative sans dialogue OAuth : générer un token d'utilisateur système (`ads_read`) dans le Business Manager et le coller dans **Connexions Meta → Option avancée**.
 
 ## 5. Ce que l'agence gère seule ensuite
 
@@ -111,6 +114,6 @@ Choix validé par l'agence (2026-10-20) : **Vercel Hobby**. Les conditions de Ve
 | --- | --- |
 | Fonctions : 300 s maximum | Aucune synchronisation ne lance de nouvelle tranche après 200 s. L'import initial (25 mois) reprend où il s'est arrêté : au passage quotidien suivant, ou immédiatement via « Synchroniser ». Les données récentes sont importées en premier. |
 | Cron : une fois par jour, à l'heure près | Synchronisation quotidienne vers 04:00 UTC ; le bouton « Synchroniser » reste disponible à tout moment. |
-| Dépôt privé d'organisation interdit, collaboration limitée | Copie sur un compte GitHub personnel ; le client fusionne lui-même les mises à jour. |
+| Pas de dépôt d'une organisation Git ; pas de collaboration d'équipe | Copie sur un compte GitHub personnel ; le client fusionne lui-même les mises à jour. |
 
 **Neon** (base) : offre gratuite suffisante pour démarrer. **Meta** : gratuit.
