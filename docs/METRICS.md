@@ -31,7 +31,9 @@ Source de vérité : `src/lib/metrics.ts`. Tous les ratios sont calculés **apr�
 - Le jour en cours est partiel.
 - Une campagne supprimée reste dans l'historique synchronisé.
 
-## Procédure de vérification (à réaliser sur un vrai compte — non faite à ce jour)
+## Procédure de vérification
+
+Un usage sur les données Meta réelles d'un client a été rapporté le 30 octobre 2026 (le client est satisfait de la version). Le relevé chiffré ci-dessous n'est pas dans le dépôt : ne pas conclure que les KPI ont été égalés à Ads Manager.
 
 1. Ads Manager → niveau Campagnes → même période (ex. mois dernier) → colonnes : Montant dépensé, Impressions, Clics (tous), Clics sur un lien, CTR (lien), CPC (lien), CPM, colonne de l'événement de conversion choisi et sa valeur.
 2. Comparer au dashboard (total puis tableau par campagne), même période, sans filtre.

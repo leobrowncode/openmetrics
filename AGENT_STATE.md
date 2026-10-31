@@ -1,89 +1,74 @@
-# Agent State
+# État pour l'agent
 
-> This file is a compact resume point for autonomous development agents.
-> Git, GitHub PRs/issues and the actual repository remain the source of truth.
+> Fichier de reprise pour un agent de développement. Git, les PR GitHub et le code restent la source de vérité.
+> Documentation en français. Dernière revue du code : 31 octobre 2026. Le masquage complet du synthétique et sa suppression après une synchro Meta réelle sont dans ce code.
 
-## Current project status
+## Statut
 
-Current roadmap position:
+- Livré sur `main` : reporting Meta Ads en lecture seule, instance par agence (Vercel Hobby ou autre Node.js), OAuth `ads_read`, dashboards, bilans, liens privés, démo synthétique.
+- Usage réel rapporté le 30 octobre 2026 : un client a été testé sur ses vraies données Meta et est satisfait de cette version. Le dépôt ne contient pas le tableau de comparaison KPI contre Ads Manager. Ne pas écrire que les chiffres sont validés face à Ads Manager.
+- Phase 2 Google Slides : recherche seulement (`docs/PHASE2_GOOGLE_SLIDES.md`).
+- Google Ads : pas de code. Le cahier des charges pour un agent est `docs/PROMPT_GOOGLE_ADS.md`. Ne pas commencer l'implémentation sans demande explicite.
+- PR ouvertes, à ne pas fusionner dans le cadre d'une tâche documentation : [#13](https://github.com/leobrowncode/openmetrics/pull/13) liens privés persistants, [#14](https://github.com/leobrowncode/openmetrics/pull/14) texte des couleurs et bouton « Générer un bilan », [#15](https://github.com/leobrowncode/openmetrics/pull/15) tri des dashboards, [#16](https://github.com/leobrowncode/openmetrics/pull/16) barre d'aperçu et dates des graphiques.
 
-- Completed through: Phase 1 — MVP foundation (demo data, not yet verified against a real Meta account)
-- Current phase: Phase 1 — MVP
-- Current objective: client-owned self-hosting (done in code), then verify KPIs against Ads Manager on a real account, then breakdowns (age, gender, creative)
+## Fait (vérifié dans le code de `main`)
 
-## Completed
+- Pipeline : client Graph GET seulement → `normalize.ts` → Postgres / PGlite (Drizzle) → `src/lib/metrics.ts` (ratio des sommes) → dashboards.
+- Synchro idempotente, verrouillée, par tranches de 31 jours, données récentes d'abord, historique 760 jours, budget 200 s, passages interrompus clos. Cron `0 4 * * *`, `maxDuration` 300.
+- Admin : scrypt, sessions, rate limit, clients, un compte Meta affiché à la fois sur la fiche, conversions avec refus des alias qui se recouvrent, nommage des événements, dashboards, modèles, couleurs de courbes, renommage du titre, bilans, copie des tableaux et des graphiques en tableau, équipe, `ADMIN_PASSWORD` réappliqué au compte déjà créé.
+- Liens privés : jeton 256 bits, empreinte HMAC seule en base, fragment d'URL, cookie HttpOnly. Copie possible tant que l'URL est encore dans la page qui vient de la créer ou de la renouveler.
+- OAuth Meta maison, `ads_read`, cookie d'état signé, token longue durée pour un jeton utilisateur, expiration stockée, alerte à moins de 14 jours.
+- Démo publique si `DEMO_MODE=true`. Réglage synthétique `auto` / `hide` / `show`. **Masquer**, et **Automatique** dès qu'un compte Meta réel est relié, retire les clients fictifs, dashboards, comptes, connexion de démo, synchronisations et liens privés de l'affichage. Ils sont effacés après une synchro Meta qui a enregistré des lignes (succès ou import partiel). **Afficher** ne supprime rien. Un client mixte garde ses comptes Meta ; seuls les comptes de démo partent. Les données réelles ne sont pas touchées.
+- Migrations au démarrage (`0000` à `0003`), guide `docs/LANCEMENT.md`.
 
-- Data pipeline: read-only Graph client → normalisation → Postgres (Drizzle) → KPI engine (ratio of sums) → dashboards
-- Idempotent, locked, chunked sync (manual + Vercel cron), Meta error classification, token expiry/permission states, sync monitoring page
-- Admin: auth (scrypt, rate limited), clients, ad accounts, conversion event config with overlap detection, dashboards (create/duplicate/delete/edit widgets), templates, Meta connections
-- Viewer: private links (hashed tokens, fragment-only URL, path-scoped HttpOnly cookie, revoke/renew/expiry), period + campaign filters, noindex/no-store/no-referrer
-- Reference template "Référence agence — 4 sections" (Investissements, Impressions et clics, CTR et CPC, Conversions)
-- Resumable, newest-first sync (`history_from`, 200 s budget, 760-day history, interrupted runs closed) for Vercel Hobby
-- Self-service for a client-owned instance: Postgres migrations on boot (advisory lock), "Se connecter avec Facebook" OAuth (ads_read, signed state cookie, token expiry tracking), Team page (admins, password change), install guide `docs/DEPLOYMENT.md`
-- Phase 2 research only: `docs/PHASE2_GOOGLE_SLIDES.md` (no code)
+## Travail actif
 
-## Active work
+- Sujet : aucun chantier ouvert dans ce fichier. Le comportement de la PR #7 est rétabli dans le code.
+- Ne pas merger les PR #13 à #16 sans demande.
 
-- Issue: none
-- Branch: `cursor/meta-reporting-mvp-foundation-a9c9`
-- Pull request: none — `create_pr` refused with "must be a collaborator"; a repository collaborator must open it from this branch
-- Status: review
+## Décisions qui contraignent la suite
 
-## Important decisions
+- Meta en lecture seule : pas de méthode autre que GET dans le client Graph.
+- Ratios toujours recalculés sur les sommes. CTR, CPC et CVR du modèle de référence : clics sur un lien (`inline_link_clicks`). Validé le 2026-10-20.
+- Conversions = types d'action choisis par compte. Alias recouvrants refusés. Validé le 2026-10-20.
+- Une instance par agence, possédée par elle. Pas de valeur client en dur. Secrets Cursor = tests de l'agent seulement.
+- Vercel Hobby accepté le 2026-10-20 (fonctions ≤ 300 s, un cron par jour). Les conditions Vercel réservent Hobby à un usage non commercial : risque déjà noté dans `docs/DECISIONS.md`.
+- Dépôt de référence : `leobrowncode/openmetrics`. Chaque agence travaille sur une copie. Un projet Hobby ne se relie pas à un dépôt appartenant à une organisation Git.
+- Pas de paramètres d'attribution envoyés à Meta (réglage du compte, comme Ads Manager depuis le 2026-01-12).
+- Toute lecture dashboard passe par le `clientId` du dashboard. Jeton de lien et session : HMAC-SHA256. Token Meta : AES-256-GCM.
+- Éviter les sous-requêtes corrélées dans un `select` Drizzle mono-table (`src/server/admin/counts.ts`).
+- Détail : `docs/DECISIONS.md`, `docs/METRICS.md`, `docs/SECURITY.md`.
 
-- Meta access is read-only: the Graph client only exposes GET; no write endpoint may be added.
-- Ratios (CTR, CPC, CPM, CVR, CPA, ROAS) are always computed from summed base measures, never averaged.
-- VALIDATED 2026-10-20: CTR/CPC/CVR use link clicks (`inline_link_clicks`); CVR = conversions / link clicks; "all clicks" metrics stay available.
-- VALIDATED 2026-10-20: conversions = action types configured by the admin per ad account; overlapping aliases are rejected.
-- VALIDATED 2026-10-20: one instance per agency, owned by the agency (its Vercel/host, DB, Meta app). Everything must be administrable from the UI; Cursor secrets are only for agent testing.
-- VALIDATED 2026-10-20: Vercel Hobby (keep functions ≤ 300 s, one daily cron). Developer keeps `leobrowncode/openmetrics` as the reference repo; each client forks/copies it to a personal GitHub account → no client-specific hard-coding.
-- Avoid correlated subqueries with Drizzle single-table selects (columns render unqualified); use grouped counts (`src/server/admin/counts.ts`).
-- No attribution params are sent: Meta applies the account's attribution setting (same as Ads Manager since 2026-01-12).
-- Every dashboard query is scoped by `dashboard.clientId`; viewer access re-verifies the token hash on every request.
-- Share tokens and session tokens are stored as HMAC-SHA256 hashes only; Meta tokens are AES-256-GCM encrypted.
-- See `docs/DECISIONS.md`, `docs/METRICS.md`, `docs/SECURITY.md`.
+## Limites connues
 
-## Known limitations / blockers
+- Comparaison KPI vs Ads Manager : procédure dans `docs/METRICS.md`, résultat non consigné.
+- La PR #7 est marquée fusionnée sur GitHub, mais son merge commit `8b13ee1` (29 octobre 2026, 12:17:42) a pour base la branche `cursor/faster-nav-dashboard-ux-c110` et pour premier parent `928fb24`. La PR #6 avait été fusionnée dans `main` treize secondes plus tôt (`8911963`, second parent `928fb24`), donc `a3a868d` n'a jamais été un ancêtre de `main`. Le comportement est rétabli ici : Masquer retire le synthétique de l'affichage, puis une synchro Meta réelle l'efface sans toucher aux données réelles.
+- Mode d'accès Meta réellement utilisé pour le client satisfait (OAuth, token système, Limited ou Full, app en développement ou Live) : non écrit dans le dépôt.
+- Pas de ventilation âge, genre, placement, ni de niveau ensemble de publicités ou publicité.
+- L'interface ne propose pas un second compte Meta sur la même fiche. Le schéma l'interdirait seulement s'il s'agit du même `meta_account_id`.
+- Mise en page mobile non consignée comme vérifiée dans un navigateur.
+- Aucune route de suppression de données pour le callback Meta. Aucune page politique de confidentialité dans l'application.
+- Pas de CI.
 
-- No real Meta token: KPI accuracy vs Ads Manager not verified (procedure in `docs/METRICS.md`).
-- No hosted instance yet: the agency deploys on its own Vercel Hobby account from its copy of the repo (`docs/DEPLOYMENT.md`).
-- Meta OAuth never executed against real Meta (no app credentials); app mode / access tier behaviour to confirm on first real connection.
-- Looker Studio reference screenshot not provided: 4-section layout inferred from the brief.
-- Mobile layout not checked in a browser.
-- Breakdowns (age, gender, placement, creative) and adset/ad levels not implemented yet.
-- No pending business decision.
-
-## Validation baseline
-
-Relevant commands:
+## Base de validation
 
 ```bash
 npm test            # vitest
 npm run lint
 npm run typecheck
 npm run build
-npm run test:e2e    # playwright, starts DEMO_MODE dev server on :3100
+npm run test:e2e    # playwright, DEMO_MODE sur le port 3100
 ```
 
-Current known baseline:
+Comptage des `it` / `test` dans l'arbre au 30 octobre 2026, sans nouvelle exécution dans cette mise à jour documentaire : 93 cas Vitest, 13 cas Playwright. Le décompte « 63 / 9 » du 20 octobre est périmé. Cette mise à jour n'a pas relancé la suite.
 
-- Unit/integration tests (Vitest): 63 passing
-- E2E tests (Playwright): 9 passing (dev/PGlite and `next start` + Postgres 16 via `E2E_BASE_URL`)
-- CI: none configured
+## Prochaine action
 
-## Next action
+1. Laisser les PR #13 à #16 suivre leur revue. Ne pas les merger pour « nettoyer ».
+2. Ne pas implémenter Google Ads tant que ce n'est pas demandé. Le prompt autonome est `docs/PROMPT_GOOGLE_ADS.md`.
+3. Ne pas déclarer les KPI conformes à Ads Manager tant qu'un relevé n'est pas écrit dans `docs/ACCEPTANCE.md`.
 
-Next run should:
+## Dernière mise à jour
 
-1. Fetch latest GitHub state and check whether a PR was opened from `cursor/meta-reporting-mvp-foundation-a9c9`.
-2. Read answers to the pending business questions (no answer ≠ approval).
-3. If real Meta app credentials are provided (agent secrets), run the OAuth flow and the Ads Manager comparison (`docs/METRICS.md`).
-4. Implement age/gender breakdowns (separate `insights_breakdown_daily` table, same idempotent sync), then creative level.
-
-Do not start another roadmap item while an active automation PR exists.
-
-## Last updated
-
-- Date: 2026-10-20
-- Main SHA: `671d410`
-- Active PR/commit: branch `cursor/meta-reporting-mvp-foundation-a9c9` (PR not created — permission)
+- Date : 2026-10-31
+- Sujet : rétablissement du masquage et de la purge du synthétique. La mention « la PR #7 n'est pas sur main » est corrigée : ce commit n'avait pas atteint `main`, le comportement est de nouveau dans le code.

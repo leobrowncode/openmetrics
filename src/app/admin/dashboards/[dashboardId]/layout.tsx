@@ -6,6 +6,7 @@ import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { clients, dashboards } from "@/server/db/schema";
+import { syntheticClientHidden } from "@/server/settings/synthetic-scope";
 import { DashboardTabs } from "./DashboardTabs";
 
 export default async function DashboardLayout(props: LayoutProps<"/admin/dashboards/[dashboardId]">) {
@@ -17,7 +18,7 @@ export default async function DashboardLayout(props: LayoutProps<"/admin/dashboa
     .from(dashboards)
     .innerJoin(clients, eq(clients.id, dashboards.clientId))
     .where(eq(dashboards.id, dashboardId));
-  if (!row) notFound();
+  if (!row || (await syntheticClientHidden(db, row.clientId))) notFound();
 
   return (
     <div className="space-y-6">

@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { desc, eq } from "drizzle-orm";
+import { and, desc, eq } from "drizzle-orm";
 import { isStale, SyncStatusBadge, ConnectionStatusBadge } from "@/components/admin/status";
 import { Card, CardHeader, Notice, PageHeader, formatDateTime } from "@/components/ui";
 import { plainDashes } from "@/lib/text";
@@ -7,23 +7,29 @@ import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { overviewCounts } from "@/server/admin/counts";
 import { adAccounts, clients, metaConnections, syncRuns } from "@/server/db/schema";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 
 export default async function AdminHome() {
   await requireAdmin();
   const db = await getDb();
+  const scope = await loadSyntheticScope(db);
+  const realOnly = scope.hidden ? eq(metaConnections.kind, "meta") : undefined;
   const [counts, accounts, connections, recentRuns] = await Promise.all([
-    overviewCounts(db),
+    overviewCounts(db, new Date(), { clientIds: scope.syntheticClientIds, accountIds: scope.demoAccountIds }),
     db
       .select({ account: adAccounts, clientName: clients.name })
       .from(adAccounts)
       .innerJoin(clients, eq(clients.id, adAccounts.clientId))
-      .where(eq(adAccounts.isActive, true))
+      .innerJoin(metaConnections, eq(metaConnections.id, adAccounts.connectionId))
+      .where(realOnly ? and(eq(adAccounts.isActive, true), realOnly) : eq(adAccounts.isActive, true))
       .orderBy(clients.name),
-    db.select().from(metaConnections).orderBy(metaConnections.label),
+    db.select().from(metaConnections).where(realOnly).orderBy(metaConnections.label),
     db
       .select({ run: syncRuns, accountName: adAccounts.name })
       .from(syncRuns)
       .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
+      .innerJoin(metaConnections, eq(metaConnections.id, adAccounts.connectionId))
+      .where(realOnly)
       .orderBy(desc(syncRuns.startedAt))
       .limit(8),
   ]);
