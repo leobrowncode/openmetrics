@@ -8,6 +8,7 @@ import {
   createShareLink,
   renewShareLink,
   revokeShareLink,
+  shareLinkUrl,
   updateShareLinkExpiry,
   verifyShareToken,
 } from "@/server/share/share-links";
@@ -20,13 +21,18 @@ describe("share links", () => {
     db = await testDb();
   });
 
-  it("returns a high-entropy token once and stores only its fingerprint", async () => {
+  it("returns a high-entropy token and keeps an encrypted copy that rebuilds the URL", async () => {
     const { dashboard } = await seedClient(db, "A", "act_1");
     const { link, token } = await createShareLink(db, { dashboardId: dashboard.id, label: "Client", expiresAt: null });
     expect(token).toMatch(/^[A-Za-z0-9_-]{43}$/);
     const [stored] = await db.select().from(shareLinks).where(eq(shareLinks.id, link.id));
     expect(stored.tokenHash).not.toContain(token);
+    expect(stored.encryptedToken).toBeTruthy();
+    expect(stored.encryptedToken).not.toContain(token);
     expect(JSON.stringify(stored)).not.toContain(token);
+    expect(shareLinkUrl("https://agence.test", stored.encryptedToken)).toBe(`https://agence.test/share#t=${token}`);
+    expect(shareLinkUrl("https://agence.test/", stored.encryptedToken)).toBe(`https://agence.test/share#t=${token}`);
+    expect(shareLinkUrl("https://agence.test", null)).toBeNull();
     const other = await createShareLink(db, { dashboardId: dashboard.id, label: "Client", expiresAt: null });
     expect(other.token).not.toBe(token);
   });

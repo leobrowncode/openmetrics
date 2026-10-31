@@ -4,7 +4,7 @@ Alternative ciblée à Supermetrics pour **Meta Ads uniquement** : l'agence conn
 
 > Statut au 30 octobre 2026 (`main`, `e41bb84`) : l'outil a été utilisé avec les données Meta réelles d'un client, qui est satisfait de cette version. Le dépôt ne contient pas le relevé chiffré de la comparaison avec Ads Manager (`docs/METRICS.md`) : cette égalité n'est donc pas affirmée ici. Les tests automatisés restent sur des réponses simulées ou des données synthétiques.
 
-Les PR [#13](https://github.com/leobrowncode/openmetrics/pull/13), [#14](https://github.com/leobrowncode/openmetrics/pull/14), [#15](https://github.com/leobrowncode/openmetrics/pull/15) et [#16](https://github.com/leobrowncode/openmetrics/pull/16) sont ouvertes et **ne font pas partie de cette description**.
+Les PR [#14](https://github.com/leobrowncode/openmetrics/pull/14) et [#15](https://github.com/leobrowncode/openmetrics/pull/15) sont ouvertes et **ne font pas partie de cette description**. La copie chiffrée du lien privé (PR #13), la barre d'aperçu avec « Depuis le début » et les dates de graphiques (PR #16), ainsi que le masquage / la purge du synthétique, en font partie.
 
 ## Démarrage rapide (démo locale)
 
@@ -17,7 +17,7 @@ Connexion démo (développement uniquement) : `admin@demo.local` / `demo-passwor
 
 Avec `DEMO_MODE=true`, l'accueil liste deux dashboards synthétiques (Association Horizon, Maison Lumen) sans login. L'admin se trouve sur `/login`.
 
-Parcours conseillé : *Dashboards* → un dashboard → *Partage* → générer un lien → l'ouvrir dans une fenêtre privée. Le lien n'est recopiable que tant que la page n'a pas été rechargée.
+Parcours conseillé : *Dashboards* → un dashboard → *Partage* → générer un lien → l'ouvrir dans une fenêtre privée. Le lien reste affiché et recopiable après rechargement.
 
 ## Commandes
 
@@ -40,7 +40,7 @@ Référence : [`.env.example`](.env.example). Rien de cette liste n'est envoyé 
 | Variable | Production |
 | --- | --- |
 | `DATABASE_URL` | Indispensable pour une instance durable. Sans elle, le code démarre sur PGlite, y compris si `NODE_ENV=production` : ce fichier ne survit pas d'une instance serverless à l'autre. |
-| `TOKEN_ENCRYPTION_KEY` | Obligatoire en production (`openssl rand -hex 32`). Chiffre les tokens Meta (AES-256-GCM). |
+| `TOKEN_ENCRYPTION_KEY` | Obligatoire en production (`openssl rand -hex 32`). Chiffre les tokens Meta et la copie des liens privés (AES-256-GCM). |
 | `TOKEN_HASH_SECRET` | Obligatoire en production (`openssl rand -hex 32`). Empreintes HMAC des liens privés et des sessions. |
 | `CRON_SECRET` | Au moins 16 caractères. Sans lui, `GET /api/cron/sync` répond 401. Vercel l'envoie en `Authorization: Bearer` lorsque la variable porte ce nom. |
 | `APP_URL` | URL publique sans chemin (`https://reporting.exemple.fr`). Sert aux liens privés et à l'URI de retour Facebook. Si elle est absente, l'origine est déduite de la requête. |
@@ -61,9 +61,9 @@ Espace agence (`/admin`, session sur chaque page et chaque action) :
 - **Clients** : création avec le sélecteur des comptes déjà visibles via Meta. Un compte Meta ne peut appartenir qu'à un seul client. La fiche ne propose d'en ajouter un que tant que le client n'en a aucun.
 - **Conversions** : choix des `action_type` après l'import. Les alias d'un même événement sont refusés. Le nom affiché (Achats, Prospects, etc.) remplace le libellé générique. Le recalcul se fait depuis les actions brutes stockées, sans re-télécharger.
 - **Synchronisation** : manuelle ou cron quotidien `0 4 * * *` (04:00 UTC, à l'heure près sur Vercel Hobby). Import initial de 760 jours, du plus récent au plus ancien, par tranches de 31 jours, reprenable. Budget 200 s par exécution (la fonction cron est plafonnée à 300 s). Verrou par compte, exécutions tracées dans *Synchronisations*.
-- **Modèles et dashboards** : modèle intégré « Référence agence - 4 sections », modèles éditables, widgets (cartes KPI, graphique, tableau par campagne), duplication, enregistrement comme modèle. Renommage au clic sur le titre. Deux couleurs de courbes par dashboard.
+- **Modèles et dashboards** : modèle intégré « Référence agence - 4 sections », modèles éditables, widgets (cartes KPI, graphique, tableau par campagne), duplication, enregistrement comme modèle. Renommage au clic sur le titre. Deux couleurs de courbes par dashboard. Barre d'aperçu compacte. Période « Depuis le début » (premier jour stocké jusqu'à hier). Graphiques automatiques au jour calendaire, puis au mois au-delà d'un an.
 - **Bilans** : depuis l'aperçu, une sélection de campagnes et la période affichée sont figées sous un nom. Un lien privé peut ouvrir ce bilan sans laisser changer la période ni les campagnes.
-- **Partage** : création, expiration, révocation, renouvellement. Copie du lien depuis la ligne **pendant la session de page** qui l'a généré ou renouvelé. Après rechargement, le jeton n'est plus reconstruit (seule son empreinte est en base).
+- **Partage** : création, expiration, révocation, renouvellement. L'accès se vérifie par l'empreinte HMAC. Une copie AES-256-GCM permet de réafficher et recopier l'URL après rechargement. Un lien créé avant cette copie reste valide mais ne se reconstruit pas.
 - **Équipe** : ajout et retrait d'administrateurs, changement de mot de passe.
 - **Copie** : chaque tableau de campagnes et chaque graphique (exporté en tableau) se copient vers le presse-papiers.
 - **Données synthétiques** : réglage Automatique / Masquer / Afficher. **Masquer** retire de l'affichage les clients fictifs, leurs dashboards, comptes, la connexion « Données synthétiques », les synchronisations et les liens privés. **Automatique** fait de même dès qu'un compte Meta réel est rattaché. Ces enregistrements sont effacés après une synchronisation Meta qui a écrit des lignes (succès, ou import partiel). **Afficher** garde le paquet entier : rien n'est effacé. Un client qui a aussi un compte Meta réel reste ; seuls ses comptes de démo partent. Les lignes Meta réelles ne sont pas modifiées. Repasser sur Afficher ne recrée pas les clients de démo.
@@ -74,10 +74,8 @@ Espace client (`/share`) : lecture seule, jeton dans le fragment d'URL, cookie H
 
 | PR | Sujet |
 | --- | --- |
-| [#13](https://github.com/leobrowncode/openmetrics/pull/13) | Garder les liens privés copiables après rechargement |
 | [#14](https://github.com/leobrowncode/openmetrics/pull/14) | Retirer le texte sous les couleurs et aligner « Générer un bilan » |
 | [#15](https://github.com/leobrowncode/openmetrics/pull/15) | Trier la liste des dashboards en cliquant sur les titres de colonnes |
-| [#16](https://github.com/leobrowncode/openmetrics/pull/16) | Barre d'aperçu plus compacte et dates des graphiques |
 
 ## Architecture
 

@@ -7,7 +7,7 @@
 | Exigence | Mise en œuvre |
 | --- | --- |
 | Token non prédictible | 256 bits issus de `crypto.randomBytes`, encodés base64url |
-| Pas de stockage en clair | Seule une empreinte HMAC-SHA256 (secret `TOKEN_HASH_SECRET`) est stockée ; le lien n'est affiché qu'une fois |
+| Pas de stockage en clair | Empreinte HMAC-SHA256 (`TOKEN_HASH_SECRET`) pour chaque accès. Une copie AES-256-GCM (`TOKEN_ENCRYPTION_KEY`) permet à l'admin de réafficher l'URL. Un lien créé avant cette copie ne peut plus être reconstruit : il faut le renouveler. |
 | Vérification serveur à chaque accès | Page et endpoint de données re-vérifient l'empreinte, la révocation et l'expiration en base à chaque requête |
 | Révocation / expiration immédiates | Pas de cache ni de session autonome : le cookie contient le token, re-vérifié à chaque requête |
 | Périmètre limité | Le lien donne accès à un seul dashboard ; les données sont filtrées par le client du dashboard ; les filtres de campagnes sont intersectés avec ce périmètre |

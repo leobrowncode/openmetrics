@@ -9,7 +9,7 @@ export interface ActionState {
   error?: string;
   message?: string;
   shareUrl?: string;
-  /** Present with shareUrl: the row that can offer the one-time copy. */
+  /** Present with shareUrl: the row that shows this URL. */
   shareLinkId?: string;
 }
 

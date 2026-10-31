@@ -71,7 +71,7 @@ Contrôle à faire dans *Settings → Deployment Protection* : la **production**
 
 Chemin prévu par le projet : projet Vercel → Storage / Marketplace → **Neon** (Postgres). L'intégration remplit `DATABASE_URL`. Toute autre Postgres accessible en TLS convient (Supabase, autre Neon, serveur). Coller alors l'URL dans les variables d'environnement.
 
-Le code applique les migrations au premier démarrage (`src/server/db/client.ts`, verrou `727001`). Aucun `npm run db:migrate` n'est requis sur Vercel. Les fichiers sont `drizzle/0000_init.sql` à `drizzle/0003_bilans.sql`.
+Le code applique les migrations au premier démarrage (`src/server/db/client.ts`, verrou `727001`). Aucun `npm run db:migrate` n'est requis sur Vercel. Les fichiers sont `drizzle/0000_init.sql` à `drizzle/0004_share_token.sql`.
 
 Sans `DATABASE_URL`, l'application démarre quand même sur PGlite. Sur Vercel ce fichier est éphémère : l'instance réelle doit avoir `DATABASE_URL` **avant** la première visite, sinon un premier hit peut amorcer une base vide qui ne sera pas celle de Neon.
 
@@ -96,7 +96,7 @@ Les poser sur l'environnement **Production** (et Preview si les previews doivent
 
 | Variable | Effet si on la change plus tard |
 | --- | --- |
-| `TOKEN_ENCRYPTION_KEY` | Les tokens Meta déjà stockés deviennent illisibles. Il faut reconnecter Meta. |
+| `TOKEN_ENCRYPTION_KEY` | Les tokens Meta déjà stockés deviennent illisibles. Il faut reconnecter Meta. Les liens privés restent valides (empreinte HMAC) mais l'admin ne peut plus afficher l'URL : il faut les renouveler. |
 | `TOKEN_HASH_SECRET` | Tous les liens privés et toutes les sessions admin cessent de marcher. |
 | `CRON_SECRET` | Vercel envoie la nouvelle valeur. L'ancienne n'ouvre plus `/api/cron/sync`. |
 
@@ -111,7 +111,7 @@ Les poser sur l'environnement **Production** (et Preview si les previews doivent
 
 `ADMIN_EMAIL` et `ADMIN_PASSWORD`. Tant que ces variables restent, **chaque démarrage réécrit le mot de passe de ce compte** et ferme ses sessions (`src/server/auth/admin.ts`). Les autres administrateurs ne sont pas touchés. Il faudra les retirer à l'étape 16.
 
-`DEMO_MODE=false`. Si la première visite a lieu avec `DEMO_MODE=true` sur une base vide, les clients fictifs Association Horizon et Maison Lumen sont créés. Repasser à `false` ne les efface pas. Sur `main`, les masquer ne les efface pas non plus.
+`DEMO_MODE=false`. Si la première visite a lieu avec `DEMO_MODE=true` sur une base vide, les clients fictifs Association Horizon et Maison Lumen sont créés. Repasser à `false` ne les efface pas. **Masquer**, et **Automatique** dès qu'un compte Meta réel est relié, les retire de l'affichage (clients, dashboards, comptes de démo, connexion, synchronisations, liens privés). Ils sont effacés après une synchro Meta qui a enregistré des lignes. **Afficher** ne supprime rien. Les données réelles ne sont pas touchées.
 
 Ne pas définir `PGLITE_DATA_DIR` sur Vercel.
 
@@ -374,7 +374,7 @@ Tant que rien n'est coché, les conversions affichées restent à 0 et un averti
 
 Fiche client → modèle **Référence agence - 4 sections** → créer. Onglets : Aperçu, Configuration, Bilans, Partage.
 
-L'aperçu est ce que le client verra. Périodes : 7, 14, 30, 90 jours, ce mois, mois dernier, cette année. Les périodes relatives excluent aujourd'hui. La comparaison est la période précédente de même longueur. Le filtre de campagnes est optionnel.
+L'aperçu est ce que le client verra. Périodes : 7, 14, 30, 90 jours, ce mois, mois dernier, cette année, depuis le début (premier jour stocké jusqu'à hier), ou une plage personnalisée. Les périodes relatives excluent aujourd'hui. La comparaison est la période précédente de même longueur. Les graphiques automatiques montrent le jour calendaire, puis le mois au-delà d'un an. Le filtre de campagnes est optionnel.
 
 « Générer un bilan » demande au moins une campagne cochée. Il fige les campagnes et les dates. Ce n'est pas obligatoire pour le premier lien.
 
@@ -391,7 +391,7 @@ Plusieurs devises sur un même dashboard : les montants ne sont pas additionnés
 
 *Partage → Nouveau lien privé* : libellé (souvent le nom du destinataire), expiration 7, 30, 90, 365 jours, jamais, ou une date. « Générer le lien ».
 
-Copier tout de suite. L'URL a la forme `https://<APP_URL>/share#t=…`. Le jeton est dans le fragment : il n'est pas envoyé au serveur dans l'URL. Après un rechargement, la ligne ne peut plus reconstruire le lien (seule l'empreinte est stockée). Renouveler en crée un nouveau et révoque l'ancien. La PR #13, non fusionnée, changerait ce point.
+L'URL a la forme `https://<APP_URL>/share#t=…`. Le jeton est dans le fragment : il n'est pas envoyé au serveur dans l'URL. L'accès se vérifie par l'empreinte HMAC. Une copie AES-256-GCM permet de réafficher et recopier l'URL après rechargement. Un lien créé avant cette copie reste valide mais ne se reconstruit pas : le renouveler en crée un nouveau et révoque l'ancien.
 
 Toute personne qui possède le lien voit le dashboard, sans compte. L'écran de partage le dit. Parade : un lien par destinataire, une expiration, la révocation (effective au prochain chargement).
 
@@ -404,7 +404,7 @@ Le premier dashboard partagé est livré ici.
 | Sujet | Qui | Quand | Automatisable ? |
 | --- | --- | --- | --- |
 | Jeton qui expire | Agence | L'admin affiche l'alerte sous 14 jours. Reconnecter Facebook ou passer à un token système. | Non — un nouveau consentement ou un nouveau token BM. Un e-mail d'alerte n'existe pas dans le code : l'avertissement est seulement dans l'écran. |
-| Rotation `TOKEN_ENCRYPTION_KEY` | Développeur, puis agence qui reconnecte Meta | Incident ou politique interne | Oui maintenant pour poser la variable. Reconnecter Meta est Non. |
+| Rotation `TOKEN_ENCRYPTION_KEY` | Développeur, puis agence qui reconnecte Meta et renouvelle les liens à réafficher | Incident ou politique interne | Oui maintenant pour poser la variable. Reconnecter Meta est Non. Les liens privés restent valides, mais l'URL ne s'affiche plus tant qu'ils ne sont pas renouvelés. |
 | Rotation `TOKEN_HASH_SECRET` | Développeur | Incident | Oui maintenant. Conséquence humaine : regénérer tous les liens et reconnecter les admins. |
 | Rotation `CRON_SECRET` | Développeur | Incident | Oui maintenant. |
 | Rotation `META_APP_SECRET` | Agence dans Meta, développeur dans Vercel | Incident | Non pour régénérer chez Meta. |

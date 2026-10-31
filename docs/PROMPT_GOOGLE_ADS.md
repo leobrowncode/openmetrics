@@ -2,7 +2,7 @@
 
 Document autonome, à donner tel quel à un agent de code Cursor. Il décrit l'ajout de Google Ads en lecture seule pour que le même dashboard couvre Google et Meta. Ne pas l'implémenter dans la PR qui a créé ce fichier.
 
-État du code visé : `main` au 30 octobre 2026, SHA `e41bb84e628c2e9dd9c2a29e9455ee03be606ad0`. Relire les fichiers cités avant de modifier : ils font foi si ce prompt a vieilli. Les PR #13 à #16 sont ouvertes : ne pas les merger et ne pas les prendre comme base, sauf demande explicite.
+État du code visé : relire les fichiers cités avant de modifier, ils font foi si ce prompt a vieilli. Les PR #14 et #15 sont ouvertes : ne pas les merger et ne pas les prendre comme base, sauf demande explicite. La copie chiffrée du lien privé, la barre d'aperçu (« Depuis le début », dates de graphiques au jour) et le masquage / la purge du synthétique sont dans le code.
 
 Les faits Google ci-dessous viennent de la documentation officielle relue le 30 octobre 2026. Si la doc a changé, suivre la doc et le noter dans la PR, ne pas suivre un palier périmé de ce prompt.
 
@@ -37,7 +37,7 @@ Les ratios restent des ratios de sommes. Aucune écriture chez Google ni chez Me
 
 ## Ce qu'il ne faut pas faire
 
-- Ne pas merger les PR #13 à #16.
+- Ne pas merger les PR #14 et #15.
 - Ne pas ajouter `ads_management` ni élargir les scopes Meta.
 - Ne pas envoyer de fenêtre d'attribution forcée à Meta.
 - Ne pas moyenne des CTR journaliers.
@@ -61,7 +61,7 @@ Les ratios restent des ratios de sommes. Aucune écriture chez Google ni chez Me
 | Conversions nommées | `src/lib/conversion-actions.ts` |
 | UI connexions | `src/app/admin/connections/page.tsx` — libellé de nav « Connexions Meta » dans `src/app/admin/AdminNav.tsx` |
 | Fiche client | `src/app/admin/clients/[clientId]/page.tsx` — le sélecteur d'ajout n'apparaît que si le client n'a aucun compte |
-| Partage | `src/server/share/share-links.ts` — empreinte HMAC seulement ; copie du lien tant que la page le garde en mémoire |
+| Partage | `src/server/share/share-links.ts` — accès par empreinte HMAC ; copie AES-256-GCM pour réafficher l'URL après rechargement. `verifyShareToken` renvoie null si `syntheticClientHidden`. |
 | Bilans | table `bilans`, `src/server/dashboards/bilans.ts` — campagnes + dates figées |
 | Chiffrement / admin | `src/server/security/encryption.ts`, `src/server/auth/admin.ts` |
 | Env | `src/server/env.ts`, `.env.example` |
@@ -193,7 +193,7 @@ Démarrage sans identifiants Google : le bouton est masqué ou explique qu'il ma
 
 ## Migration sans casser Meta
 
-- Nouvelle migration Drizzle, numéro suivant `0003_bilans`. Défauts qui rendent les lignes actuelles valides sans script manuel.
+- Nouvelle migration Drizzle, numéro suivant `0004_share_token`. Défauts qui rendent les lignes actuelles valides sans script manuel.
 - `platform = 'meta'` par défaut. `external_account_id` backfill depuis `meta_account_id`.
 - `link_clicks` : les lignes Meta restent NOT NULL. Pour Google, NULL autorisé (assouplir la colonne) **ou** table inchangée et une colonne `link_clicks_known boolean`. Choisir l'option la plus petite qui empêche le faux 0 %. Les agrégats SQL doivent ignorer NULL et non les remplacer par 0 avant le ratio.
 - Les dashboards JSON (`version: 1`) restent lisibles. Un champ optionnel `platformFilter` défaut `"all"` évite de réécrire les configs existantes. Zod avec défaut, comme `allowCustomize`.
@@ -262,4 +262,4 @@ Chaque PR est déployable. Ne pas ouvrir la suivante sur une base rouge.
 
 ## Rappel de contexte produit
 
-OpenMetrics est le reporting d'agence de Léo. Le client final voit un lien privé, pas l'admin. L'agence a déjà un usage Meta réel satisfaisant : un écart Google ne doit pas vider ni recalculer les faits Meta. Les PR #13 à #16 (lien recopiable après rechargement, bouton de bilan, tri, barre d'aperçu) ne sont pas dans `main`. Si tu touches les mêmes composants, rebaser sur `main` et laisser ces PR tranquilles.
+OpenMetrics est le reporting d'agence de Léo. Le client final voit un lien privé, pas l'admin. L'agence a déjà un usage Meta réel satisfaisant : un écart Google ne doit pas vider ni recalculer les faits Meta. Le lien privé recopiable après rechargement, la barre d'aperçu (« Depuis le début », dates de graphiques au jour) et le masquage / la purge du synthétique sont dans le code. Les PR #14 et #15 (bouton de bilan, tri) ne le sont pas. Si tu touches les mêmes composants, partir de `main` à jour et laisser ces PR tranquilles.

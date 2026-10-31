@@ -4,13 +4,13 @@ Légende : ✅ fait et vérifié · 🧪 fait, vérifié uniquement avec donnée
 
 Dernière mise à jour : 30/10/2026.
 
-Un client réel a utilisé l'outil sur ses données Meta et s'est dit satisfait de cette version (fait rapporté, pas un relevé dans le dépôt). La comparaison chiffrée avec Ads Manager reste à consigner. Les PR #13 à #16 sont ouvertes et ne comptent pas comme livrées.
+Un client réel a utilisé l'outil sur ses données Meta et s'est dit satisfait de cette version (fait rapporté, pas un relevé dans le dépôt). La comparaison chiffrée avec Ads Manager reste à consigner. Les PR #14 et #15 sont ouvertes et ne comptent pas comme livrées. La copie chiffrée du lien privé et la barre d'aperçu (période « Depuis le début », dates de graphiques) sont dans cette branche.
 
 ## Sécurité et confidentialité
 
 | Critère | Statut | Preuve |
 | --- | --- | --- |
-| Token de lien aléatoire 256 bits, empreinte HMAC seule stockée | ✅ | `tests/share-links.test.ts` |
+| Token de lien aléatoire 256 bits, empreinte HMAC et copie chiffrée | ✅ | `tests/share-links.test.ts` |
 | Vérification serveur à chaque accès, révocation et expiration immédiates | ✅ | tests d'intégration + `e2e/mvp.spec.ts` |
 | Token absent des URL envoyées au serveur, des logs et du Referer | ✅ | e2e (aucune requête ne contient le token) |
 | Pages Viewer non indexées, non mises en cache | ✅ | e2e (en-têtes) |

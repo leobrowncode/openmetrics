@@ -23,6 +23,8 @@ export type ShareLinkRow = {
   lastAccessedAt: string | null;
   accessCount: number;
   bilanName: string | null;
+  /** Null for a link created before the token was kept. */
+  url: string | null;
 };
 
 function ExpiryFields({ defaultChoice = "90" }: { defaultChoice?: string }) {
@@ -107,31 +109,7 @@ function ShareLinkItem({
   return (
     <li className="space-y-3 px-5 py-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        {url ? (
-          <button
-            type="button"
-            className="flex min-w-0 flex-1 cursor-pointer items-start gap-3 rounded-lg px-2 py-1 -mx-2 text-left hover:bg-slate-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-500"
-            aria-label={copied ? `Lien de ${label} copié` : `Copier le lien de ${label}`}
-            title={copied ? "Copié" : "Copier le lien"}
-            onClick={() => void copy()}
-          >
-            <LinkSummary
-              link={link}
-              hint={
-                copied
-                  ? "Lien copié."
-                  : copyState === "error"
-                    ? undefined
-                    : "Cliquez pour copier. Ce lien ne sera plus proposé après rechargement."
-              }
-            />
-            <span className={cx(buttonClass("secondary", "sm"), "pointer-events-none shrink-0 px-2")}>
-              {copied ? <CheckIcon /> : <CopyIcon />}
-            </span>
-          </button>
-        ) : (
-          <LinkSummary link={link} />
-        )}
+        <LinkSummary link={link} hint={copied ? "Lien copié." : undefined} />
         {link.state === "active" && (
           <form action={revokeShareLinkAction}>
             <input type="hidden" name="dashboardId" value={dashboardId} />
@@ -142,21 +120,32 @@ function ShareLinkItem({
           </form>
         )}
       </div>
-      <p className="sr-only" role="status">
-        {copied ? `Lien de ${label} copié dans le presse-papiers.` : copyState === "error" ? "Impossible de copier le lien." : ""}
-      </p>
-      {url && copyState === "error" && (
-        <div className="space-y-1">
-          <p className="text-xs text-red-700">Impossible de copier. Sélectionnez le lien :</p>
+      {url ? (
+        <div className="flex items-center gap-2">
           <input
             readOnly
             value={url}
-            aria-label="Lien privé"
-            className={cx(inputClass, "font-mono text-xs")}
+            aria-label={`Lien de ${label}`}
+            className={cx(inputClass, "min-w-0 flex-1 font-mono text-xs")}
             onFocus={(event) => event.currentTarget.select()}
           />
+          <button
+            type="button"
+            className={cx(buttonClass("secondary", "sm"), "shrink-0 px-2")}
+            aria-label={copied ? `Lien de ${label} copié` : `Copier le lien de ${label}`}
+            title={copied ? "Copié" : "Copier le lien"}
+            onClick={() => void copy()}
+          >
+            {copied ? <CheckIcon /> : <CopyIcon />}
+          </button>
         </div>
+      ) : link.revokedAt ? null : (
+        <p className="text-xs text-slate-500">Ce lien a été créé avant l&apos;enregistrement du jeton. Renouvelez-le pour pouvoir le recopier.</p>
       )}
+      <p className="sr-only" role="status">
+        {copied ? `Lien de ${label} copié dans le presse-papiers.` : copyState === "error" ? "Impossible de copier le lien." : ""}
+      </p>
+      {url && copyState === "error" ? <p className="text-xs text-red-700">Impossible de copier. Sélectionnez le lien à gauche.</p> : null}
       {!link.revokedAt && (
         <details className="rounded-lg border border-slate-200 bg-slate-50 p-3">
           <summary className="cursor-pointer text-sm text-slate-700">Modifier l&apos;expiration ou renouveler</summary>
@@ -221,7 +210,7 @@ export function ShareLinks({ dashboardId, links }: { dashboardId: string; links:
             </li>
             <li>Le lien donne accès à ce seul dashboard, en lecture seule, aux données des comptes de ce client uniquement.</li>
             <li>Révoquez-le dès qu&apos;il n&apos;est plus nécessaire ou s&apos;il a été transféré par erreur : l&apos;accès est coupé immédiatement.</li>
-            <li>Le lien se copie en cliquant sur sa ligne, jusqu&apos;au rechargement de la page. En cas de perte, renouvelez-le (l&apos;ancien cesse de fonctionner).</li>
+            <li>Le lien reste affiché à gauche du bouton de copie, y compris après rechargement. Le renouveler révoque l&apos;ancien.</li>
             <li>Créez un lien par destinataire pour pouvoir révoquer un accès sans couper les autres.</li>
           </ul>
         </Notice>
@@ -243,7 +232,7 @@ export function ShareLinks({ dashboardId, links }: { dashboardId: string; links:
                 <ShareLinkItem
                   key={link.id}
                   link={link}
-                  url={link.state === "active" ? issued[link.id] : undefined}
+                  url={link.revokedAt ? undefined : (link.url ?? issued[link.id])}
                   dashboardId={dashboardId}
                   onResult={remember}
                 />
