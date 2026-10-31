@@ -11,6 +11,7 @@ import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
 import { actionLabel } from "@/lib/conversion-actions";
 import { adAccounts, clients, dashboards, dashboardTemplates } from "@/server/db/schema";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 import { observedActionTypes } from "@/server/sync/sync-service";
 import { listAvailableAdAccounts } from "@/server/meta/available-accounts";
 import {
@@ -28,14 +29,18 @@ export default async function ClientPage(props: PageProps<"/admin/clients/[clien
   await requireAdmin();
   const { clientId } = await props.params;
   const db = await getDb();
+  const scope = await loadSyntheticScope(db);
+  if (scope.syntheticClientIds.includes(clientId)) notFound();
   const [client] = await db.select().from(clients).where(eq(clients.id, clientId));
   if (!client) notFound();
 
-  const [accounts, clientDashboards, templates] = await Promise.all([
+  const hiddenAccounts = new Set(scope.demoAccountIds);
+  const [accountRows, clientDashboards, templates] = await Promise.all([
     db.select().from(adAccounts).where(eq(adAccounts.clientId, clientId)).orderBy(adAccounts.name),
     db.select().from(dashboards).where(eq(dashboards.clientId, clientId)).orderBy(desc(dashboards.updatedAt)),
     db.select().from(dashboardTemplates).orderBy(desc(dashboardTemplates.builtIn), dashboardTemplates.name),
   ]);
+  const accounts = accountRows.filter((account) => !hiddenAccounts.has(account.id));
   const observed = new Map(await Promise.all(accounts.map(async (a) => [a.id, await observedActionTypes(db, a.id)] as const)));
 
   return (

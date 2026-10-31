@@ -8,6 +8,8 @@ import { decryptSecret } from "../security/encryption";
 import { createDemoSource } from "../meta/demo-source";
 import { describeMetaError, MetaApiError } from "../meta/errors";
 import { createMetaSource, type InsightsSource } from "../meta/source";
+import { purgeSyntheticDataIfReady } from "../settings/synthetic-purge";
+import { loadSyntheticScope } from "../settings/synthetic-scope";
 import { normalizeInsightRow, NormalizationError, type NormalizedInsight } from "./normalize";
 
 /** Conversions keep changing for ~28 days because of click attribution windows. */
@@ -173,6 +175,20 @@ export async function syncAdAccount(db: Db, accountId: string, options: SyncOpti
   const deadline = options.deadline ?? clock() + SYNC_TIME_BUDGET_MS;
   const [account] = await db.select().from(adAccounts).where(eq(adAccounts.id, accountId));
   if (!account) throw new Error("Compte publicitaire introuvable.");
+  const [accountConnection] = await db
+    .select({ kind: metaConnections.kind })
+    .from(metaConnections)
+    .where(eq(metaConnections.id, account.connectionId));
+  if (!accountConnection) throw new Error("Connexion Meta introuvable.");
+  if (accountConnection.kind === "demo" && (await loadSyntheticScope(db)).hidden) {
+    return {
+      runId: null,
+      status: "skipped",
+      rowsWritten: 0,
+      range: null,
+      errorMessage: "Les données synthétiques sont masquées.",
+    };
+  }
 
   const plan = options.range ? null : planSync(account, now);
   const refresh = plan ? plan.refresh : splitRange(options.range!);
@@ -276,6 +292,13 @@ export async function syncAdAccount(db: Db, accountId: string, options: SyncOpti
       .update(adAccounts)
       .set({ lastSyncStatus: status, syncLockedUntil: null })
       .where(eq(adAccounts.id, accountId));
+    if (connection.kind === "meta" && (status === "success" || (status === "partial" && rowsWritten > 0))) {
+      try {
+        await purgeSyntheticDataIfReady(db);
+      } catch (error) {
+        console.error("[synthetic] purge failed", error);
+      }
+    }
     if (connection.status !== "active") {
       await db
         .update(metaConnections)
@@ -320,23 +343,34 @@ export async function syncAllAccounts(
   db: Db,
   options: { budgetMs: number; sourceFactory?: SourceFactory; trigger?: SyncTrigger },
 ): Promise<Array<SyncResult & { accountId: string }>> {
+  try {
+    await purgeSyntheticDataIfReady(db);
+  } catch (error) {
+    console.error("[synthetic] purge failed", error);
+  }
   const startedAt = Date.now();
   const deadline = startedAt + options.budgetMs;
+  let hidden = (await loadSyntheticScope(db)).hidden;
   const accounts = await db
-    .select({ id: adAccounts.id })
+    .select({ id: adAccounts.id, kind: metaConnections.kind })
     .from(adAccounts)
+    .innerJoin(metaConnections, eq(metaConnections.id, adAccounts.connectionId))
     .where(eq(adAccounts.isActive, true))
     .orderBy(sql`${adAccounts.lastSyncedAt} asc nulls first`, asc(adAccounts.createdAt));
 
   const results: Array<SyncResult & { accountId: string }> = [];
-  for (const { id } of accounts) {
+  for (const { id, kind } of accounts) {
     if (Date.now() >= deadline) break;
+    if (kind === "demo" && hidden) continue;
     const result = await syncAdAccount(db, id, {
       trigger: options.trigger ?? "cron",
       sourceFactory: options.sourceFactory,
       deadline,
     });
     results.push({ accountId: id, ...result });
+    if (kind === "meta" && (result.status === "success" || (result.status === "partial" && result.rowsWritten > 0))) {
+      hidden = (await loadSyntheticScope(db)).hidden;
+    }
   }
   return results;
 }

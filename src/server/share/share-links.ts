@@ -3,6 +3,7 @@ import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { bilans, dashboards, shareLinks } from "../db/schema";
 import { generateToken, hashToken, isWellFormedToken } from "../security/tokens";
+import { syntheticClientHidden } from "../settings/synthetic-scope";
 
 export type ShareLink = typeof shareLinks.$inferSelect;
 export type Dashboard = typeof dashboards.$inferSelect;
@@ -106,6 +107,7 @@ export async function verifyShareToken(
   if (!row) return null;
   if (options.expectedLinkId && row.link.id !== options.expectedLinkId) return null;
   if (shareLinkState(row.link, now) !== "active") return null;
+  if (await syntheticClientHidden(db, row.dashboard.clientId)) return null;
   return row;
 }
 
