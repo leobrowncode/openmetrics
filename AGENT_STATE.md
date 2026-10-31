@@ -61,7 +61,7 @@ npm run build
 npm run test:e2e    # playwright, DEMO_MODE sur le port 3100
 ```
 
-Comptage des `it` / `test` dans l'arbre au 30 octobre 2026, sans nouvelle exécution dans cette mise à jour documentaire : 93 cas Vitest, 13 cas Playwright. Le décompte « 63 / 9 » du 20 octobre est périmé. La PR #18 a ajouté `tests/synthetic-purge.test.ts` après ce décompte.
+Exécution du 31 octobre 2026 sur cette branche, après la fusion de `main` : 100 cas Vitest, 13 cas Playwright. Le décompte « 63 / 9 » du 20 octobre est périmé. `npm run typecheck` a besoin de `next typegen` sur un arbre sans `.next` (`next-env.d.ts` est ignoré par Git).
 
 ## Prochaine action
 
