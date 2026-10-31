@@ -8,8 +8,7 @@ import { accountCountsByConnection } from "@/server/admin/counts";
 import { metaConnections } from "@/server/db/schema";
 import { metaOAuthConfig } from "@/server/meta/connections";
 import { META_OAUTH_PATH, META_OAUTH_RESULTS, metaRedirectUri, type MetaOAuthResult } from "@/server/meta/oauth-flow";
-import { getSyntheticDisplay, hasRealMetaAccount } from "@/server/settings/synthetic";
-import { syntheticAccountsVisible } from "@/lib/synthetic-display";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 import { appOrigin } from "../actions/context";
 import { createConnectionAction, deleteConnectionAction, replaceTokenAction, testConnectionAction } from "../actions/connections";
 import { setSyntheticDisplayAction } from "../actions/settings";
@@ -17,25 +16,23 @@ import { setSyntheticDisplayAction } from "../actions/settings";
 export default async function ConnectionsPage({ searchParams }: PageProps<"/admin/connections">) {
   await requireAdmin();
   const db = await getDb();
+  const scope = await loadSyntheticScope(db);
   const accountCounts = await accountCountsByConnection(db);
-  const connections = (await db.select().from(metaConnections).orderBy(metaConnections.label)).map((connection) => ({
-    connection,
-    accounts: accountCounts.get(connection.id) ?? 0,
-  }));
+  const connections = (await db.select().from(metaConnections).orderBy(metaConnections.label))
+    .filter((connection) => !(scope.hidden && connection.kind === "demo"))
+    .map((connection) => ({
+      connection,
+      accounts: accountCounts.get(connection.id) ?? 0,
+    }));
 
-  const syntheticDisplay = await getSyntheticDisplay(db);
-  const hasRealAccount = syntheticDisplay === "auto" ? await hasRealMetaAccount(db) : false;
-  const syntheticVisible = syntheticAccountsVisible({
-    display: syntheticDisplay,
-    instanceHasRealAccount: syntheticDisplay === "auto" && hasRealAccount,
-  });
+  const syntheticVisible = !scope.hidden;
   const syntheticStatus =
-    syntheticDisplay === "hide"
-      ? "Les données synthétiques sont masquées sur tout le site."
-      : syntheticDisplay === "show"
-        ? "Les données synthétiques restent visibles. Un client qui a aussi un compte Meta réel n'affiche plus ses comptes de démonstration."
-        : hasRealAccount
-          ? "Un compte Meta réel est relié : les données synthétiques sont masquées."
+    scope.display === "hide"
+      ? "Les clients fictifs, leurs dashboards, comptes et synchronisations sont masqués sur tout le site. Ils sont effacés définitivement dès qu'un compte Meta réel a enregistré des données."
+      : scope.display === "show"
+        ? "Les données synthétiques restent visibles. Un client qui a aussi un compte Meta réel n'affiche plus ses comptes de démonstration. Rien n'est effacé."
+        : scope.instanceHasRealAccount
+          ? "Un compte Meta réel est relié : les données synthétiques sont masquées. Elles sont effacées dès qu'une synchronisation a enregistré des données Meta."
           : "Les données synthétiques sont visibles tant qu'aucun compte Meta réel n'est relié.";
 
   const oauthEnabled = metaOAuthConfig() !== null;
@@ -63,7 +60,7 @@ export default async function ConnectionsPage({ searchParams }: PageProps<"/admi
           <Notice tone={syntheticVisible ? "amber" : "blue"}>{syntheticStatus}</Notice>
           <ActionForm action={setSyntheticDisplayAction} submitLabel="Enregistrer l'affichage">
             <Field label="Données synthétiques sur le site">
-              <select name="syntheticDisplay" defaultValue={syntheticDisplay} className={inputClass} aria-label="Données synthétiques sur le site">
+              <select name="syntheticDisplay" defaultValue={scope.display} className={inputClass} aria-label="Données synthétiques sur le site">
                 <option value="auto">Automatique — masquer dès qu&apos;un compte Meta réel est relié</option>
                 <option value="hide">Masquer — ne plus les afficher, même sans compte Meta</option>
                 <option value="show">Afficher — les garder visibles sur les clients sans compte réel</option>

@@ -3,8 +3,9 @@ import { eq } from "drizzle-orm";
 import { compareLabels } from "@/lib/account-search";
 import type { Db } from "../db/client";
 import { adAccounts, metaConnections } from "../db/schema";
-import { describeMetaError, MetaApiError } from "./errors";
+import { loadSyntheticScope } from "../settings/synthetic-scope";
 import { defaultSourceFactory } from "../sync/sync-service";
+import { describeMetaError, MetaApiError } from "./errors";
 
 export interface AvailableAdAccount {
   connectionId: string;
@@ -23,14 +24,16 @@ export interface AvailableAccountsResult {
 
 /** Ad accounts visible to an active Meta connection and not yet attached to a client. */
 export async function listAvailableAdAccounts(db: Db): Promise<AvailableAccountsResult> {
+  const scope = await loadSyntheticScope(db);
   const [connections, linkedRows] = await Promise.all([
     db.select().from(metaConnections).where(eq(metaConnections.status, "active")),
     db.select({ id: adAccounts.metaAccountId }).from(adAccounts),
   ]);
+  const visible = connections.filter((connection) => !(scope.hidden && connection.kind === "demo"));
   const linked = new Set(linkedRows.map((row) => row.id));
 
   const results = await Promise.all(
-    connections.map(async (connection) => {
+    visible.map(async (connection) => {
       try {
         const list = await defaultSourceFactory(connection).listAdAccounts();
         return { connection, list, error: null as string | null };
@@ -65,5 +68,5 @@ export async function listAvailableAdAccounts(db: Db): Promise<AvailableAccounts
     }
   }
   accounts.sort((a, b) => compareLabels(a.name, b.name) || compareLabels(a.metaAccountId, b.metaAccountId));
-  return { accounts, errors, connectionCount: connections.length };
+  return { accounts, errors, connectionCount: visible.length };
 }

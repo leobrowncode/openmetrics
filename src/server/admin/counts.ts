@@ -1,5 +1,5 @@
 import "server-only";
-import { and, eq, gt, isNull, or, sql } from "drizzle-orm";
+import { and, eq, gt, isNull, notInArray, or, sql } from "drizzle-orm";
 import type { Db } from "../db/client";
 import { adAccounts, clients, dashboards, shareLinks } from "../db/schema";
 
@@ -19,21 +19,42 @@ export async function accountCountsByConnection(db: Db): Promise<Map<string, num
   return toMap(await db.select({ key: adAccounts.connectionId, n: count }).from(adAccounts).groupBy(adAccounts.connectionId));
 }
 
-export async function accountCountsByClient(db: Db): Promise<Map<string, number>> {
-  return toMap(await db.select({ key: adAccounts.clientId, n: count }).from(adAccounts).groupBy(adAccounts.clientId));
+export async function accountCountsByClient(db: Db, excludeAccountIds: string[] = []): Promise<Map<string, number>> {
+  return toMap(
+    await db
+      .select({ key: adAccounts.clientId, n: count })
+      .from(adAccounts)
+      .where(excludeAccountIds.length > 0 ? notInArray(adAccounts.id, excludeAccountIds) : undefined)
+      .groupBy(adAccounts.clientId),
+  );
 }
 
 export async function dashboardCountsByClient(db: Db): Promise<Map<string, number>> {
   return toMap(await db.select({ key: dashboards.clientId, n: count }).from(dashboards).groupBy(dashboards.clientId));
 }
 
-export async function overviewCounts(db: Db, now = new Date()): Promise<{ clients: number; accounts: number; dashboards: number; links: number }> {
+export async function overviewCounts(
+  db: Db,
+  now = new Date(),
+  exclude?: { clientIds?: string[]; accountIds?: string[] },
+): Promise<{ clients: number; accounts: number; dashboards: number; links: number }> {
   const activeLink = and(isNull(shareLinks.revokedAt), or(isNull(shareLinks.expiresAt), gt(shareLinks.expiresAt, now)));
+  const clientIds = exclude?.clientIds?.length ? exclude.clientIds : undefined;
+  const accountIds = exclude?.accountIds?.length ? exclude.accountIds : undefined;
   const [clientRows, accountRows, dashboardRows, linkRows] = await Promise.all([
-    db.select({ n: count }).from(clients),
-    db.select({ n: count }).from(adAccounts).where(eq(adAccounts.isActive, true)),
-    db.select({ n: count }).from(dashboards),
-    db.select({ n: count }).from(shareLinks).where(activeLink),
+    db.select({ n: count }).from(clients).where(clientIds ? notInArray(clients.id, clientIds) : undefined),
+    db
+      .select({ n: count })
+      .from(adAccounts)
+      .where(accountIds ? and(eq(adAccounts.isActive, true), notInArray(adAccounts.id, accountIds)) : eq(adAccounts.isActive, true)),
+    db.select({ n: count }).from(dashboards).where(clientIds ? notInArray(dashboards.clientId, clientIds) : undefined),
+    clientIds
+      ? db
+          .select({ n: count })
+          .from(shareLinks)
+          .innerJoin(dashboards, eq(dashboards.id, shareLinks.dashboardId))
+          .where(and(activeLink, notInArray(dashboards.clientId, clientIds)))
+      : db.select({ n: count }).from(shareLinks).where(activeLink),
   ]);
   return {
     clients: clientRows[0]?.n ?? 0,

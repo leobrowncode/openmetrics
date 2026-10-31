@@ -1,7 +1,7 @@
 # État pour l'agent
 
 > Fichier de reprise pour un agent de développement. Git, les PR GitHub et le code restent la source de vérité.
-> Documentation en français. Dernière revue du code : 30 octobre 2026, `main` à `e41bb84`.
+> Documentation en français. Dernière revue du code : 31 octobre 2026. Le masquage complet du synthétique et sa suppression après une synchro Meta réelle sont dans ce code.
 
 ## Statut
 
@@ -18,14 +18,13 @@
 - Admin : scrypt, sessions, rate limit, clients, un compte Meta affiché à la fois sur la fiche, conversions avec refus des alias qui se recouvrent, nommage des événements, dashboards, modèles, couleurs de courbes, renommage du titre, bilans, copie des tableaux et des graphiques en tableau, équipe, `ADMIN_PASSWORD` réappliqué au compte déjà créé.
 - Liens privés : jeton 256 bits, empreinte HMAC seule en base, fragment d'URL, cookie HttpOnly. Copie possible tant que l'URL est encore dans la page qui vient de la créer ou de la renouveler.
 - OAuth Meta maison, `ads_read`, cookie d'état signé, token longue durée pour un jeton utilisateur, expiration stockée, alerte à moins de 14 jours.
-- Démo publique si `DEMO_MODE=true`. Réglage synthétique `auto` / `hide` / `show` : les chiffres de démo sortent des dashboards, les lignes ne sont pas supprimées.
+- Démo publique si `DEMO_MODE=true`. Réglage synthétique `auto` / `hide` / `show`. **Masquer**, et **Automatique** dès qu'un compte Meta réel est relié, retire les clients fictifs, dashboards, comptes, connexion de démo, synchronisations et liens privés de l'affichage. Ils sont effacés après une synchro Meta qui a enregistré des lignes (succès ou import partiel). **Afficher** ne supprime rien. Un client mixte garde ses comptes Meta ; seuls les comptes de démo partent. Les données réelles ne sont pas touchées.
 - Migrations au démarrage (`0000` à `0003`), guide `docs/LANCEMENT.md`.
 
 ## Travail actif
 
-- Sujet : documentation d'état, lancement d'une instance, prompt Google Ads. Aucun changement de code applicatif.
-- Branche : `cursor/docs-etat-lancement-74f3` (documentation seulement, ouverte vers `main`).
-- Ne pas merger les PR #13 à #16.
+- Sujet : aucun chantier ouvert dans ce fichier. Le comportement de la PR #7 est rétabli dans le code.
+- Ne pas merger les PR #13 à #16 sans demande.
 
 ## Décisions qui contraignent la suite
 
@@ -43,7 +42,7 @@
 ## Limites connues
 
 - Comparaison KPI vs Ads Manager : procédure dans `docs/METRICS.md`, résultat non consigné.
-- La PR #7 (« Masquer retire tout le synthétique, puis l'efface après une synchro Meta ») est marquée fusionnée sur GitHub, mais dans la branche `cursor/faster-nav-dashboard-ux-c110` **après** le merge de la PR #6 dans `main`. `a3a868d` n'est pas un ancêtre de `e41bb84`. Sur `main`, masquer n'efface pas les clients fictifs, et le cron synchronise encore les comptes `kind = demo`.
+- La PR #7 est marquée fusionnée sur GitHub, mais son merge commit `8b13ee1` (29 octobre 2026, 12:17:42) a pour base la branche `cursor/faster-nav-dashboard-ux-c110` et pour premier parent `928fb24`. La PR #6 avait été fusionnée dans `main` treize secondes plus tôt (`8911963`, second parent `928fb24`), donc `a3a868d` n'a jamais été un ancêtre de `main`. Le comportement est rétabli ici : Masquer retire le synthétique de l'affichage, puis une synchro Meta réelle l'efface sans toucher aux données réelles.
 - Mode d'accès Meta réellement utilisé pour le client satisfait (OAuth, token système, Limited ou Full, app en développement ou Live) : non écrit dans le dépôt.
 - Pas de ventilation âge, genre, placement, ni de niveau ensemble de publicités ou publicité.
 - L'interface ne propose pas un second compte Meta sur la même fiche. Le schéma l'interdirait seulement s'il s'agit du même `meta_account_id`.
@@ -66,12 +65,10 @@ Comptage des `it` / `test` dans l'arbre au 30 octobre 2026, sans nouvelle exécu
 ## Prochaine action
 
 1. Laisser les PR #13 à #16 suivre leur revue. Ne pas les merger pour « nettoyer ».
-2. Si l'agence veut vraiment la suppression du synthétique après une synchro réelle, reporter le commit de la PR #7 sur `main` (il n'y est pas).
-3. Ne pas implémenter Google Ads tant que ce n'est pas demandé. Le prompt autonome est `docs/PROMPT_GOOGLE_ADS.md`.
-4. Ne pas déclarer les KPI conformes à Ads Manager tant qu'un relevé n'est pas écrit dans `docs/ACCEPTANCE.md`.
+2. Ne pas implémenter Google Ads tant que ce n'est pas demandé. Le prompt autonome est `docs/PROMPT_GOOGLE_ADS.md`.
+3. Ne pas déclarer les KPI conformes à Ads Manager tant qu'un relevé n'est pas écrit dans `docs/ACCEPTANCE.md`.
 
 ## Dernière mise à jour
 
-- Date : 2026-10-30
-- SHA de `main` décrit : `e41bb84e628c2e9dd9c2a29e9455ee03be606ad0`
-- Sujet : documentation (README, AGENT_STATE, `docs/LANCEMENT.md`, `docs/PROMPT_GOOGLE_ADS.md`)
+- Date : 2026-10-31
+- Sujet : rétablissement du masquage et de la purge du synthétique. La mention « la PR #7 n'est pas sur main » est corrigée : ce commit n'avait pas atteint `main`, le comportement est de nouveau dans le code.
