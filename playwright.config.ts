@@ -18,7 +18,9 @@ export default defineConfig({
     : {
         // Fresh in-memory database seeded with synthetic demo data on every run.
         // Fake Meta app credentials: the OAuth test intercepts facebook.com, nothing reaches Meta.
-        command: "DEMO_MODE=true META_APP_ID=1234567890 META_APP_SECRET=e2e-fake-app-secret npx next dev -p 3100",
+        // E2E_RELAX_LOGIN_LIMIT: the whole suite shares this server and exceeds the production login cap.
+        command:
+          "DEMO_MODE=true E2E_RELAX_LOGIN_LIMIT=1 META_APP_ID=1234567890 META_APP_SECRET=e2e-fake-app-secret npx next dev -p 3100",
         url: "http://localhost:3100/login",
         timeout: 180_000,
         reuseExistingServer: false,

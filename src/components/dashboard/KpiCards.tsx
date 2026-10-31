@@ -29,18 +29,12 @@ export function KpiCards({
             <p className="tabular mt-2 text-2xl font-semibold text-slate-900" data-testid={`kpi-${key}`}>
               {formatMetric(key, value, currency)}
             </p>
-            {previousTotals && (
+            {previousTotals && delta !== null && (
               <p className="mt-1 text-xs text-slate-500">
-                {delta === null ? (
-                  <span>-</span>
-                ) : (
-                  <>
-                    <span className={cx("font-semibold", good === true && "text-emerald-600", good === false && "text-red-600")}>
-                      {delta > 0 ? "▲" : delta < 0 ? "▼" : "■"} {new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 1 }).format(Math.abs(delta))}
-                    </span>{" "}
-                    vs {formatMetric(key, previous, currency)}
-                  </>
-                )}
+                <span className={cx("font-semibold", good === true && "text-emerald-600", good === false && "text-red-600")}>
+                  {delta > 0 ? "▲" : delta < 0 ? "▼" : "■"} {new Intl.NumberFormat("fr-FR", { style: "percent", maximumFractionDigits: 1 }).format(Math.abs(delta))}
+                </span>{" "}
+                vs {formatMetric(key, previous, currency)}
               </p>
             )}
           </div>

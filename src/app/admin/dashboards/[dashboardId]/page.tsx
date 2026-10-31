@@ -25,17 +25,14 @@ export default async function DashboardPreviewPage(props: PageProps<"/admin/dash
   if ("error" in payload) return <Notice tone="red">{payload.error}</Notice>;
 
   return (
-    <div className="space-y-4">
-      <Notice tone="blue">Aperçu administrateur. Le client voit la même page via son lien privé, sans accès à l&apos;administration.</Notice>
-      <DashboardView
-        config={parseDashboardConfig(dashboard.config)}
-        initial={payload}
-        dataUrl={`/admin/dashboards/${dashboard.id}/data`}
-        mode="admin"
-        dashboardId={dashboard.id}
-        title={plainDashes(dashboard.name)}
-        subtitle={client?.name ? plainDashes(client.name) : undefined}
-      />
-    </div>
+    <DashboardView
+      config={parseDashboardConfig(dashboard.config)}
+      initial={payload}
+      dataUrl={`/admin/dashboards/${dashboard.id}/data`}
+      mode="admin"
+      dashboardId={dashboard.id}
+      title={plainDashes(dashboard.name)}
+      subtitle={client?.name ? plainDashes(client.name) : undefined}
+    />
   );
 }

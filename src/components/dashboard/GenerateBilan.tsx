@@ -4,7 +4,7 @@ import { ActionForm } from "@/components/admin/ActionForm";
 import { createBilanAction } from "@/app/admin/actions/bilans";
 import { formatDateFr, type DateRange } from "@/lib/periods";
 import { plainDashes } from "@/lib/text";
-import { buttonClass, Field, inputClass } from "../ui";
+import { cx, Field, inputClass, toolbarButtonClass } from "../ui";
 
 export function GenerateBilan({
   dashboardId,
@@ -19,7 +19,7 @@ export function GenerateBilan({
 }) {
   if (campaignIds.length === 0) {
     return (
-      <button type="button" className={buttonClass("secondary", "sm")} disabled title="Cochez au moins une campagne">
+      <button type="button" className={toolbarButtonClass} disabled title="Cochez au moins une campagne">
         Générer un bilan
       </button>
     );
@@ -29,8 +29,8 @@ export function GenerateBilan({
   const defaultName = (names.length === 1 ? `Bilan - ${plainDashes(names[0])}` : `Bilan - ${campaignIds.length} campagnes`).slice(0, 120);
 
   return (
-    <details className="relative">
-      <summary className={`${buttonClass("secondary", "sm")} cursor-pointer list-none`}>Générer un bilan</summary>
+    <details className="relative shrink-0">
+      <summary className={cx(toolbarButtonClass, "m-0 cursor-pointer list-none [&::-webkit-details-marker]:hidden")}>Générer un bilan</summary>
       <div className="absolute right-0 z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
         <p className="mb-2 text-xs text-slate-500">
           {formatDateFr(range.from)} - {formatDateFr(range.to)} · {campaignIds.length} campagne{campaignIds.length > 1 ? "s" : ""}. Les dates ne bougeront plus.

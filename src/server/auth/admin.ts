@@ -134,11 +134,24 @@ export async function clientIp(): Promise<string> {
   return h.get("x-real-ip") ?? h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? "unknown";
 }
 
+/**
+ * Documented production limits: 8 attempts / 15 min / email, 20 / 15 min / IP.
+ * Playwright runs every spec against one process, so the demo admin logs in
+ * more than 8 times. That relaxation never applies when NODE_ENV=production.
+ */
+function loginRateLimits(): { perIp: number; perEmail: number } {
+  if (!isProduction() && process.env.E2E_RELAX_LOGIN_LIMIT === "1") {
+    return { perIp: 200, perEmail: 200 };
+  }
+  return { perIp: 20, perEmail: 8 };
+}
+
 export async function loginWithPassword(email: string, password: string): Promise<"ok" | "invalid" | "rate_limited"> {
   const db = await getDb();
   const ip = await clientIp();
-  const perIp = await rateLimit(db, `login:ip:${ip}`, 20, 15 * 60);
-  const perEmail = await rateLimit(db, `login:email:${email.toLowerCase()}`, 8, 15 * 60);
+  const limits = loginRateLimits();
+  const perIp = await rateLimit(db, `login:ip:${ip}`, limits.perIp, 15 * 60);
+  const perEmail = await rateLimit(db, `login:email:${email.toLowerCase()}`, limits.perEmail, 15 * 60);
   if (!perIp.allowed || !perEmail.allowed) return "rate_limited";
 
   const session = await authenticate(db, email, password);

@@ -1,8 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  addDays,
   daysBetweenInclusive,
   isIsoDate,
+  MAX_RANGE_DAYS,
   previousPeriod,
+  rangeFromFirstData,
   resolvePreset,
   todayInTimezone,
   validateRange,
@@ -31,6 +34,14 @@ describe("periods", () => {
     const now = new Date("2026-10-19T23:30:00Z");
     expect(todayInTimezone("Europe/Paris", now)).toBe("2026-10-20");
     expect(todayInTimezone("America/Los_Angeles", now)).toBe("2026-10-19");
+  });
+
+  it("starts a range on the first stored day and keeps the end", () => {
+    expect(rangeFromFirstData("2026-01-15", "2026-10-18")).toEqual({ from: "2026-01-15", to: "2026-10-18" });
+    expect(rangeFromFirstData("2026-11-01", "2026-10-18")).toEqual({ from: "2026-11-01", to: "2026-11-01" });
+    const to = "2026-10-18";
+    expect(rangeFromFirstData("2018-01-01", to)).toEqual({ from: addDays(to, -(MAX_RANGE_DAYS - 1)), to });
+    expect(validateRange(rangeFromFirstData("2018-01-01", to))).toBeNull();
   });
 
   it("validates custom ranges", () => {
