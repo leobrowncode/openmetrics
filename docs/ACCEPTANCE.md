@@ -2,7 +2,9 @@
 
 Légende : ✅ fait et vérifié · 🧪 fait, vérifié uniquement avec données simulées · ⏳ à faire · ❓ décision attendue
 
-Dernière mise à jour : 19/10/2026.
+Dernière mise à jour : 30/10/2026.
+
+Un client réel a utilisé l'outil sur ses données Meta et s'est dit satisfait de cette version (fait rapporté, pas un relevé dans le dépôt). La comparaison chiffrée avec Ads Manager reste à consigner. Les PR #14 à #16 sont ouvertes et ne comptent pas comme livrées. La copie chiffrée du lien privé est dans cette branche.
 
 ## Sécurité et confidentialité
 
@@ -28,7 +30,7 @@ Dernière mise à jour : 19/10/2026.
 | Devise et fuseau du compte respectés, multi-devises refusé | ✅ | tests + écran |
 | Attribution du compte (comme Ads Manager) | 🧪 | aucune fenêtre forcée (`tests/graph-client.test.ts`) |
 | Double comptage des alias de conversion empêché | ✅ | tests + e2e |
-| **Comparaison avec Ads Manager sur un vrai compte** | ⏳ | Nécessite un token Meta réel (voir `docs/METRICS.md`) |
+| **Comparaison avec Ads Manager sur un vrai compte** | ⏳ | Usage réel rapporté le 30/10/2026, relevé chiffré non consigné (`docs/METRICS.md`) |
 | Définition des clics retenue (tous vs lien) | ✅ | Validée le 2026-10-20 : clics sur un lien |
 | Définition de la conversion par client | ✅ | Validée le 2026-10-20 : configurée par l'admin, compte par compte |
 
@@ -36,8 +38,8 @@ Dernière mise à jour : 19/10/2026.
 
 | Critère | Statut |
 | --- | --- |
-| Connexion Meta par token (vérification des permissions) | 🧪 (testé avec réponses simulées, pas avec Meta) |
-| Connexion Meta « Se connecter avec Facebook » (OAuth, `ads_read`) | 🧪 (redirection, CSRF, annulation testés en e2e ; échange de code testé avec réponses simulées ; jamais exécuté contre Meta) |
+| Connexion Meta par token (vérification des permissions) | 🧪 (tests avec réponses simulées). Un compte client réel a été lu ; le mode de connexion n'est pas consigné. |
+| Connexion Meta « Se connecter avec Facebook » (OAuth, `ads_read`) | 🧪 (redirection, CSRF, annulation testés en e2e ; échange de code testé avec réponses simulées). Un compte client réel a été lu ; le dépôt ne dit pas si c'était cet OAuth ou un token système. |
 | Gestion des administrateurs (Équipe) | ✅ (tests + e2e) |
 | Installation autonome : migrations automatiques au démarrage | ✅ (vérifié avec un vrai Postgres 16 en mode production) |
 | Clients, comptes publicitaires, rattachement exclusif | ✅ |
@@ -53,10 +55,10 @@ Dernière mise à jour : 19/10/2026.
 | Supervision des synchronisations et des erreurs | ✅ |
 | Ventilations âge / genre | ⏳ |
 | Niveau ensemble de publicités (audiences) et publicités (créatives) | ⏳ |
-| Instance hébergée chez le client (Vercel ou autre) | ⏳ (guide prêt : `docs/DEPLOYMENT.md` ; déploiement par l'agence) |
+| Instance hébergée chez le client (Vercel ou autre) | 🧪 (un usage client réel est rapporté ; le dépôt ne décrit pas l'hébergeur de cette instance. Guide : `docs/LANCEMENT.md`) |
 | Responsive | 🧪 (vérifié en 1280-1440 px ; mobile à vérifier) |
 
 ## Hors MVP
 
 - Phase 2 Google Slides : analysée (`docs/PHASE2_GOOGLE_SLIDES.md`), non implémentée.
-- Google Ads : exclu (Looker Studio existant).
+- Google Ads : pas de code. Cahier des charges pour un agent : `docs/PROMPT_GOOGLE_ADS.md`.

@@ -6,7 +6,8 @@ import { formatDateFr } from "@/lib/periods";
 import { plainDashes } from "@/lib/text";
 import { requireAdmin } from "@/server/auth/admin";
 import { getDb } from "@/server/db/client";
-import { adAccounts, clients, syncRuns } from "@/server/db/schema";
+import { adAccounts, clients, metaConnections, syncRuns } from "@/server/db/schema";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 import { ATTRIBUTION_REFRESH_DAYS } from "@/server/sync/sync-service";
 import { syncNowAction } from "../actions/sync";
 
@@ -15,16 +16,22 @@ const TRIGGER_LABELS = { cron: "Planifiée", manual: "Manuelle", backfill: "Impo
 export default async function SyncsPage() {
   await requireAdmin();
   const db = await getDb();
+  const scope = await loadSyntheticScope(db);
+  const realOnly = scope.hidden ? eq(metaConnections.kind, "meta") : undefined;
   const [accounts, runs] = await Promise.all([
     db
       .select({ account: adAccounts, clientName: clients.name })
       .from(adAccounts)
       .innerJoin(clients, eq(clients.id, adAccounts.clientId))
+      .innerJoin(metaConnections, eq(metaConnections.id, adAccounts.connectionId))
+      .where(realOnly)
       .orderBy(clients.name, adAccounts.name),
     db
       .select({ run: syncRuns, accountName: adAccounts.name })
       .from(syncRuns)
       .innerJoin(adAccounts, eq(adAccounts.id, syncRuns.adAccountId))
+      .innerJoin(metaConnections, eq(metaConnections.id, adAccounts.connectionId))
+      .where(realOnly)
       .orderBy(desc(syncRuns.startedAt))
       .limit(100),
   ]);

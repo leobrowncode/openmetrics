@@ -8,16 +8,19 @@ import { accountCountsByClient, dashboardCountsByClient } from "@/server/admin/c
 import { plainDashes } from "@/lib/text";
 import { clients } from "@/server/db/schema";
 import { listAvailableAdAccounts } from "@/server/meta/available-accounts";
+import { loadSyntheticScope } from "@/server/settings/synthetic-scope";
 
 export default async function ClientsPage() {
   await requireAdmin();
   const db = await getDb();
+  const scope = await loadSyntheticScope(db);
+  const hiddenClients = new Set(scope.syntheticClientIds);
   const [accountCounts, dashboardCounts, clientRows] = await Promise.all([
-    accountCountsByClient(db),
+    accountCountsByClient(db, scope.demoAccountIds),
     dashboardCountsByClient(db),
     db.select({ id: clients.id, name: clients.name }).from(clients).orderBy(clients.name),
   ]);
-  const rows = clientRows.map((c) => ({
+  const rows = clientRows.filter((c) => !hiddenClients.has(c.id)).map((c) => ({
     ...c,
     accounts: accountCounts.get(c.id) ?? 0,
     dashboards: dashboardCounts.get(c.id) ?? 0,

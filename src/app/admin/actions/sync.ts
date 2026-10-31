@@ -15,7 +15,7 @@ export async function syncNowAction(_prev: ActionState | null, formData: FormDat
   await log("sync.manual", "ad_account", accountId, { status: result.status });
   revalidatePath("/admin/syncs");
   revalidatePath(`/admin/clients/${account.clientId}`);
-  if (result.status === "skipped") return { error: "Une synchronisation est déjà en cours pour ce compte." };
+  if (result.status === "skipped") return { error: result.errorMessage ?? "Une synchronisation est déjà en cours pour ce compte." };
   if (result.status === "error") return { error: result.errorMessage };
   if (result.status === "partial") {
     return {

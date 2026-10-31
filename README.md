@@ -1,64 +1,108 @@
 # OpenMetrics — Reporting Meta Ads pour agence
 
-Alternative ciblée à Supermetrics pour **Meta Ads uniquement** : l'agence connecte ses comptes publicitaires en lecture seule, construit des dashboards par client (inspirés de son modèle Looker Studio) et les partage via des **liens privés** révocables.
+Alternative ciblée à Supermetrics pour **Meta Ads uniquement** : l'agence connecte ses comptes publicitaires en lecture seule, construit des dashboards par client et les partage par des **liens privés** révocables.
 
-> Statut : MVP en cours (phase 1). Les données de démonstration sont **synthétiques**. L'intégration Meta réelle est implémentée et testée avec des réponses simulées, mais **n'a pas encore été vérifiée sur un vrai compte** (voir `docs/ACCEPTANCE.md`).
+> Statut au 30 octobre 2026 (`main`, `e41bb84`) : l'outil a été utilisé avec les données Meta réelles d'un client, qui est satisfait de cette version. Le dépôt ne contient pas le relevé chiffré de la comparaison avec Ads Manager (`docs/METRICS.md`) : cette égalité n'est donc pas affirmée ici. Les tests automatisés restent sur des réponses simulées ou des données synthétiques.
+
+Les PR [#14](https://github.com/leobrowncode/openmetrics/pull/14), [#15](https://github.com/leobrowncode/openmetrics/pull/15) et [#16](https://github.com/leobrowncode/openmetrics/pull/16) sont ouvertes et **ne font pas partie de cette description**. La copie chiffrée du lien privé (PR #13) et le masquage / la purge du synthétique en font partie.
 
 ## Démarrage rapide (démo locale)
 
 ```bash
 npm install
-npm run demo          # http://localhost:3000 — base PGlite locale dans .data/, données synthétiques
+npm run demo          # http://localhost:3000 — base PGlite dans .data/, données synthétiques
 ```
 
 Connexion démo (développement uniquement) : `admin@demo.local` / `demo-password-2026`.
 
-Parcours conseillé : *Dashboards* → un dashboard → *Partage* → générer un lien → l'ouvrir dans une fenêtre privée.
+Avec `DEMO_MODE=true`, l'accueil liste deux dashboards synthétiques (Association Horizon, Maison Lumen) sans login. L'admin se trouve sur `/login`.
+
+Parcours conseillé : *Dashboards* → un dashboard → *Partage* → générer un lien → l'ouvrir dans une fenêtre privée. Le lien reste affiché et recopiable après rechargement.
 
 ## Commandes
 
 | Commande | Rôle |
 | --- | --- |
-| `npm run dev` | Serveur de dev (base PGlite en mémoire si `DATABASE_URL` absent) |
-| `npm run demo` | Dev + données synthétiques persistées dans `.data/pglite` |
-| `npm test` | Tests unitaires et d'intégration (Vitest + PGlite en mémoire) |
-| `npm run test:e2e` | Parcours navigateur (Playwright, lance son propre serveur de démo) |
-| `npm run lint` / `npm run typecheck` / `npm run build` | Qualité et build |
-| `npm run db:generate` | Génère une migration après modification de `src/server/db/schema.ts` |
-| `npm run db:migrate` | Applique les migrations sur `DATABASE_URL` (facultatif : elles s'appliquent aussi automatiquement au démarrage) |
+| `npm run dev` | Serveur de dev. PGlite en mémoire si `DATABASE_URL` est absent, ou dans `PGLITE_DATA_DIR` s'il est défini. |
+| `npm run demo` | Dev avec `DEMO_MODE=true` et base PGlite dans `.data/pglite`. |
+| `npm test` | Tests unitaires et d'intégration (Vitest + PGlite en mémoire). |
+| `npm run test:e2e` | Parcours navigateur (Playwright). Lance son propre serveur de démo. |
+| `npm run lint` / `npm run typecheck` / `npm run build` | Qualité et build. |
+| `npm run db:generate` | Génère une migration Drizzle après modification de `src/server/db/schema.ts`. |
+| `npm run db:migrate` | Applique les migrations sur `DATABASE_URL`. Au démarrage de l'application, elles s'appliquent aussi seules (verrou consultatif Postgres). |
+
+Aucune CI n'est configurée dans le dépôt.
 
 ## Configuration
 
-Voir `.env.example`. En production, `TOKEN_ENCRYPTION_KEY`, `TOKEN_HASH_SECRET`, `DATABASE_URL`, `CRON_SECRET` et `APP_URL` sont obligatoires ; `ADMIN_EMAIL`/`ADMIN_PASSWORD` ne servent qu'à créer le premier administrateur.
+Référence : [`.env.example`](.env.example). Rien de cette liste n'est envoyé au navigateur.
 
-**Installation chez le client (Vercel ou autre hébergeur) : [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).**
+| Variable | Production |
+| --- | --- |
+| `DATABASE_URL` | Indispensable pour une instance durable. Sans elle, le code démarre sur PGlite, y compris si `NODE_ENV=production` : ce fichier ne survit pas d'une instance serverless à l'autre. |
+| `TOKEN_ENCRYPTION_KEY` | Obligatoire en production (`openssl rand -hex 32`). Chiffre les tokens Meta et la copie des liens privés (AES-256-GCM). |
+| `TOKEN_HASH_SECRET` | Obligatoire en production (`openssl rand -hex 32`). Empreintes HMAC des liens privés et des sessions. |
+| `CRON_SECRET` | Au moins 16 caractères. Sans lui, `GET /api/cron/sync` répond 401. Vercel l'envoie en `Authorization: Bearer` lorsque la variable porte ce nom. |
+| `APP_URL` | URL publique sans chemin (`https://reporting.exemple.fr`). Sert aux liens privés et à l'URI de retour Facebook. Si elle est absente, l'origine est déduite de la requête. |
+| `ADMIN_EMAIL` / `ADMIN_PASSWORD` | Créent cet administrateur, puis **réalignent son mot de passe à chaque démarrage** tant qu'elles restent définies (sessions de ce compte fermées). Mot de passe d'au moins 12 caractères. À retirer après la première connexion. |
+| `META_APP_ID` / `META_APP_SECRET` | Activent « Se connecter avec Facebook » et `appsecret_proof`. |
+| `META_LOGIN_CONFIG_ID` | Optionnel. Configuration Facebook Login for Business. |
+| `META_GRAPH_API_VERSION` | Défaut `v24.0` (encore valide ; expiration Meta le 18 février 2028). `v26.0` est la version courante au 30 octobre 2026. |
+| `DEMO_MODE` | `false` sur l'instance d'une agence. `true` amorce les clients synthétiques **une seule fois**, sur une base vide. |
+| `PGLITE_DATA_DIR` | Local uniquement. |
+
+**Lancer une instance chez une nouvelle agence : [`docs/LANCEMENT.md`](docs/LANCEMENT.md).** Le résumé technique d'hébergement reste dans [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md).
+
+## Fonctionnalités sur `main`
+
+Espace agence (`/admin`, session sur chaque page et chaque action) :
+
+- **Connexions Meta** : OAuth « Se connecter avec Facebook » (`ads_read` seul, échange du code côté serveur, token chiffré) ou collage d'un token d'utilisateur système. Test de la connexion, remplacement du token, alerte 14 jours avant l'expiration enregistrée.
+- **Clients** : création avec le sélecteur des comptes déjà visibles via Meta. Un compte Meta ne peut appartenir qu'à un seul client. La fiche ne propose d'en ajouter un que tant que le client n'en a aucun.
+- **Conversions** : choix des `action_type` après l'import. Les alias d'un même événement sont refusés. Le nom affiché (Achats, Prospects, etc.) remplace le libellé générique. Le recalcul se fait depuis les actions brutes stockées, sans re-télécharger.
+- **Synchronisation** : manuelle ou cron quotidien `0 4 * * *` (04:00 UTC, à l'heure près sur Vercel Hobby). Import initial de 760 jours, du plus récent au plus ancien, par tranches de 31 jours, reprenable. Budget 200 s par exécution (la fonction cron est plafonnée à 300 s). Verrou par compte, exécutions tracées dans *Synchronisations*.
+- **Modèles et dashboards** : modèle intégré « Référence agence - 4 sections », modèles éditables, widgets (cartes KPI, graphique, tableau par campagne), duplication, enregistrement comme modèle. Renommage au clic sur le titre. Deux couleurs de courbes par dashboard.
+- **Bilans** : depuis l'aperçu, une sélection de campagnes et la période affichée sont figées sous un nom. Un lien privé peut ouvrir ce bilan sans laisser changer la période ni les campagnes.
+- **Partage** : création, expiration, révocation, renouvellement. L'accès se vérifie par l'empreinte HMAC. Une copie AES-256-GCM permet de réafficher et recopier l'URL après rechargement. Un lien créé avant cette copie reste valide mais ne se reconstruit pas.
+- **Équipe** : ajout et retrait d'administrateurs, changement de mot de passe.
+- **Copie** : chaque tableau de campagnes et chaque graphique (exporté en tableau) se copient vers le presse-papiers.
+- **Données synthétiques** : réglage Automatique / Masquer / Afficher. **Masquer** retire de l'affichage les clients fictifs, leurs dashboards, comptes, la connexion « Données synthétiques », les synchronisations et les liens privés. **Automatique** fait de même dès qu'un compte Meta réel est rattaché. Ces enregistrements sont effacés après une synchronisation Meta qui a écrit des lignes (succès, ou import partiel). **Afficher** garde le paquet entier : rien n'est effacé. Un client qui a aussi un compte Meta réel reste ; seuls ses comptes de démo partent. Les lignes Meta réelles ne sont pas modifiées. Repasser sur Afficher ne recrée pas les clients de démo.
+
+Espace client (`/share`) : lecture seule, jeton dans le fragment d'URL, cookie HttpOnly limité au chemin du lien, pages non indexées et non mises en cache.
+
+## En cours (ne pas considérer comme livré)
+
+| PR | Sujet |
+| --- | --- |
+| [#14](https://github.com/leobrowncode/openmetrics/pull/14) | Retirer le texte sous les couleurs et aligner « Générer un bilan » |
+| [#15](https://github.com/leobrowncode/openmetrics/pull/15) | Trier la liste des dashboards en cliquant sur les titres de colonnes |
+| [#16](https://github.com/leobrowncode/openmetrics/pull/16) | Barre d'aperçu plus compacte et dates des graphiques |
 
 ## Architecture
 
 ```
 Extraction (src/server/meta)      Graph API en GET uniquement, pagination, retries, erreurs typées
-  → Normalisation (src/server/sync/normalize.ts)   chaînes Meta → faits journaliers typés
-  → Stockage (src/server/db)      Postgres / PGlite via Drizzle, faits campagne × jour
+  → Normalisation (src/server/sync/normalize.ts)   chaînes Meta → faits journaliers
+  → Stockage (src/server/db)      Postgres ou PGlite via Drizzle ; grain campagne × jour
   → Calcul KPI (src/lib/metrics.ts)  ratios recalculés à partir des sommes
   → Dashboards (src/server/dashboards, src/components/dashboard)
-  → Exports (phase 2, docs/PHASE2_GOOGLE_SLIDES.md)
 ```
 
-- `src/app/admin/**` : espace agence (session requise sur chaque page et chaque action serveur).
-- `src/app/share/**` : espace client (lien privé, lecture seule).
-- `src/app/api/cron/sync` : synchronisation planifiée (Vercel Cron, `Authorization: Bearer $CRON_SECRET`).
+- `src/app/admin/**` : espace agence.
+- `src/app/share/**` : espace client.
+- `src/app/demo/**` : dashboards synthétiques publics, seulement si `DEMO_MODE=true` et si l'affichage synthétique est actif.
+- `src/app/api/cron/sync` : synchronisation planifiée (`vercel.json`, une fois par jour).
 
-Documentation : [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) · [`docs/DECISIONS.md`](docs/DECISIONS.md) · [`docs/METRICS.md`](docs/METRICS.md) · [`docs/SECURITY.md`](docs/SECURITY.md) · [`docs/PHASE2_GOOGLE_SLIDES.md`](docs/PHASE2_GOOGLE_SLIDES.md) · [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md)
+Stack constatée dans `package.json` : Next.js 16.4.2, React 19.3, Drizzle ORM, Postgres (`postgres`) ou PGlite, Zod, Recharts. Pas de SDK Meta : le client Graph n'expose que `GET`.
+
+Documentation : [`docs/LANCEMENT.md`](docs/LANCEMENT.md) · [`docs/DEPLOYMENT.md`](docs/DEPLOYMENT.md) · [`docs/DECISIONS.md`](docs/DECISIONS.md) · [`docs/METRICS.md`](docs/METRICS.md) · [`docs/SECURITY.md`](docs/SECURITY.md) · [`docs/ACCEPTANCE.md`](docs/ACCEPTANCE.md) · [`docs/PHASE2_GOOGLE_SLIDES.md`](docs/PHASE2_GOOGLE_SLIDES.md) · [`docs/PROMPT_GOOGLE_ADS.md`](docs/PROMPT_GOOGLE_ADS.md)
 
 ## Connecter un vrai compte Meta
 
-**Recommandé : Admin → Connexions Meta → « Se connecter avec Facebook »** (nécessite `META_APP_ID` / `META_APP_SECRET`, voir `docs/DEPLOYMENT.md`). Seule la permission `ads_read` est demandée ; le code est échangé côté serveur et le token est chiffré.
+**Recommandé : Admin → Connexions Meta → « Se connecter avec Facebook »** (`META_APP_ID` et `META_APP_SECRET`). Seule `ads_read` est demandée. Le code est échangé côté serveur ; le token est chiffré et n'est jamais réaffiché.
 
-Alternative (token d'utilisateur système, sans expiration) :
+Alternative : Business Manager → utilisateur système → droit « Afficher les performances » sur les comptes clients → token avec **uniquement** `ads_read` → *Option avancée*. L'application vérifie `/me/permissions` avant d'enregistrer.
 
-1. Business Manager de l'agence → *Utilisateurs système* → créer un utilisateur système.
-2. Lui attribuer les comptes publicitaires clients avec le droit « Afficher les performances ».
-3. Générer un token avec **uniquement** `ads_read`.
-4. Admin → *Connexions Meta* → *Option avancée* → coller le token. Il est vérifié (`/me/permissions`), chiffré, jamais réaffiché.
+Ensuite : fiche client → rattacher un compte (l'import des 25 mois part tout seul, du plus récent au plus ancien) → choisir l'événement de conversion quand des actions ont été observées → créer le dashboard → *Partage*.
 
-Ensuite : fiche client → rattacher un compte → choisir l'événement de conversion après l'import initial (25 mois, du plus récent au plus ancien).
+Le détail des écrans Meta, de Vercel Hobby et de l'ordre des opérations est dans [`docs/LANCEMENT.md`](docs/LANCEMENT.md).
