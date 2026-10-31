@@ -374,7 +374,7 @@ Tant que rien n'est coché, les conversions affichées restent à 0 et un averti
 
 Fiche client → modèle **Référence agence - 4 sections** → créer. Onglets : Aperçu, Configuration, Bilans, Partage.
 
-L'aperçu est ce que le client verra. Périodes : 7, 14, 30, 90 jours, ce mois, mois dernier, cette année. Les périodes relatives excluent aujourd'hui. La comparaison est la période précédente de même longueur. Le filtre de campagnes est optionnel.
+L'aperçu est ce que le client verra. Périodes : 7, 14, 30, 90 jours, ce mois, mois dernier, cette année, depuis le début (premier jour stocké jusqu'à hier), ou une plage personnalisée. Les périodes relatives excluent aujourd'hui. La comparaison est la période précédente de même longueur. Les graphiques automatiques montrent le jour calendaire, puis le mois au-delà d'un an. Le filtre de campagnes est optionnel.
 
 « Générer un bilan » demande au moins une campagne cochée. Il fige les campagnes et les dates. Ce n'est pas obligatoire pour le premier lien.
 

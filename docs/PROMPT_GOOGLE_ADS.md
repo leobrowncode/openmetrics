@@ -2,7 +2,7 @@
 
 Document autonome, à donner tel quel à un agent de code Cursor. Il décrit l'ajout de Google Ads en lecture seule pour que le même dashboard couvre Google et Meta. Ne pas l'implémenter dans la PR qui a créé ce fichier.
 
-État du code visé : relire les fichiers cités avant de modifier, ils font foi si ce prompt a vieilli. Les PR #14 à #16 sont ouvertes : ne pas les merger et ne pas les prendre comme base, sauf demande explicite. La copie chiffrée du lien privé et le masquage / la purge du synthétique sont dans le code.
+État du code visé : relire les fichiers cités avant de modifier, ils font foi si ce prompt a vieilli. Les PR #14 et #15 sont ouvertes : ne pas les merger et ne pas les prendre comme base, sauf demande explicite. La copie chiffrée du lien privé, la barre d'aperçu (« Depuis le début », dates de graphiques au jour) et le masquage / la purge du synthétique sont dans le code.
 
 Les faits Google ci-dessous viennent de la documentation officielle relue le 30 octobre 2026. Si la doc a changé, suivre la doc et le noter dans la PR, ne pas suivre un palier périmé de ce prompt.
 
@@ -37,7 +37,7 @@ Les ratios restent des ratios de sommes. Aucune écriture chez Google ni chez Me
 
 ## Ce qu'il ne faut pas faire
 
-- Ne pas merger les PR #14 à #16.
+- Ne pas merger les PR #14 et #15.
 - Ne pas ajouter `ads_management` ni élargir les scopes Meta.
 - Ne pas envoyer de fenêtre d'attribution forcée à Meta.
 - Ne pas moyenne des CTR journaliers.
@@ -262,4 +262,4 @@ Chaque PR est déployable. Ne pas ouvrir la suivante sur une base rouge.
 
 ## Rappel de contexte produit
 
-OpenMetrics est le reporting d'agence de Léo. Le client final voit un lien privé, pas l'admin. L'agence a déjà un usage Meta réel satisfaisant : un écart Google ne doit pas vider ni recalculer les faits Meta. Le lien privé recopiable après rechargement et le masquage / la purge du synthétique sont dans le code. Les PR #14 à #16 (bouton de bilan, tri, barre d'aperçu) ne le sont pas. Si tu touches les mêmes composants, partir de `main` à jour et laisser ces PR tranquilles.
+OpenMetrics est le reporting d'agence de Léo. Le client final voit un lien privé, pas l'admin. L'agence a déjà un usage Meta réel satisfaisant : un écart Google ne doit pas vider ni recalculer les faits Meta. Le lien privé recopiable après rechargement, la barre d'aperçu (« Depuis le début », dates de graphiques au jour) et le masquage / la purge du synthétique sont dans le code. Les PR #14 et #15 (bouton de bilan, tri) ne le sont pas. Si tu touches les mêmes composants, partir de `main` à jour et laisser ces PR tranquilles.

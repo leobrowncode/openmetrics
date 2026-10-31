@@ -1,16 +1,16 @@
 # État pour l'agent
 
 > Fichier de reprise pour un agent de développement. Git, les PR GitHub et le code restent la source de vérité.
-> Documentation en français. Dernière revue du code : 31 octobre 2026. Cette branche garde les liens privés recopiable après rechargement et le masquage / la purge du synthétique après une synchro Meta réelle.
+> Documentation en français. Dernière revue du code : 31 octobre 2026. Cette branche garde les liens privés recopiables après rechargement, la barre d'aperçu avec « Depuis le début » et les dates de graphiques au jour calendaire, ainsi que le masquage / la purge du synthétique.
 
 ## Statut
 
-- Livré sur `main` avant cette branche : reporting Meta Ads en lecture seule, instance par agence (Vercel Hobby ou autre Node.js), OAuth `ads_read`, dashboards, bilans, liens privés, démo synthétique, masquage et purge du synthétique (PR #18), guide de lancement (PR #17).
+- Livré sur `main` (`8836411`) : reporting Meta Ads en lecture seule, instance par agence (Vercel Hobby ou autre Node.js), OAuth `ads_read`, dashboards, bilans, liens privés, démo synthétique, masquage et purge du synthétique (PR #18), guide de lancement (PR #17), barre d'aperçu, période « Depuis le début » et dates de graphiques au jour calendaire (PR #16).
 - Cette branche (PR #13) ajoute la copie AES-256-GCM du jeton de lien. L'accès reste vérifié par l'empreinte HMAC. `verifyShareToken` renvoie null quand le client synthétique est masqué.
 - Usage réel rapporté le 30 octobre 2026 : un client a été testé sur ses vraies données Meta et est satisfait de cette version. Le dépôt ne contient pas le tableau de comparaison KPI contre Ads Manager. Ne pas écrire que les chiffres sont validés face à Ads Manager.
 - Phase 2 Google Slides : recherche seulement (`docs/PHASE2_GOOGLE_SLIDES.md`).
 - Google Ads : pas de code. Le cahier des charges pour un agent est `docs/PROMPT_GOOGLE_ADS.md`. Ne pas commencer l'implémentation sans demande explicite.
-- PR ouvertes, à ne pas fusionner ici : [#14](https://github.com/leobrowncode/openmetrics/pull/14) texte des couleurs et bouton « Générer un bilan », [#15](https://github.com/leobrowncode/openmetrics/pull/15) tri des dashboards, [#16](https://github.com/leobrowncode/openmetrics/pull/16) barre d'aperçu et dates des graphiques.
+- PR ouvertes, à ne pas fusionner ici : [#14](https://github.com/leobrowncode/openmetrics/pull/14) texte des couleurs et bouton « Générer un bilan », [#15](https://github.com/leobrowncode/openmetrics/pull/15) tri des dashboards.
 
 ## Fait (vérifié dans ce code)
 
@@ -18,14 +18,15 @@
 - Synchro idempotente, verrouillée, par tranches de 31 jours, données récentes d'abord, historique 760 jours, budget 200 s, passages interrompus clos. Cron `0 4 * * *`, `maxDuration` 300.
 - Admin : scrypt, sessions, rate limit, clients, un compte Meta affiché à la fois sur la fiche, conversions avec refus des alias qui se recouvrent, nommage des événements, dashboards, modèles, couleurs de courbes, renommage du titre, bilans, copie des tableaux et des graphiques en tableau, équipe, `ADMIN_PASSWORD` réappliqué au compte déjà créé.
 - Liens privés : jeton 256 bits, empreinte HMAC pour chaque accès, copie AES-256-GCM pour réafficher l'URL après rechargement, fragment d'URL, cookie HttpOnly. Un lien créé avant cette copie reste valide mais ne se reconstruit pas : il faut le renouveler.
+- Aperçu : barre compacte, menu de période avec « Depuis le début » (premier jour stocké jusqu'à hier). Les graphiques automatiques affichent le jour calendaire (`05/01`), puis le mois au-delà d'un an.
 - OAuth Meta maison, `ads_read`, cookie d'état signé, token longue durée pour un jeton utilisateur, expiration stockée, alerte à moins de 14 jours.
 - Démo publique si `DEMO_MODE=true`. Réglage synthétique `auto` / `hide` / `show`. **Masquer**, et **Automatique** dès qu'un compte Meta réel est relié, retire les clients fictifs, dashboards, comptes, connexion de démo, synchronisations et liens privés de l'affichage. Ils sont effacés après une synchro Meta qui a enregistré des lignes (succès ou import partiel). **Afficher** ne supprime rien. Un client mixte garde ses comptes Meta ; seuls les comptes de démo partent. Les données réelles ne sont pas touchées.
 - Migrations au démarrage (`0000` à `0004_share_token`), guide `docs/LANCEMENT.md`. `main` s'arrête à `0003_bilans` : pas de collision de numéro.
 
 ## Travail actif
 
-- Sujet : PR #13 remise à jour avec `origin/main` (PR #17 et #18). Les deux comportements restent : lien recopiable, et masquage / purge du synthétique.
-- Ne pas merger les PR #14 à #16 sans demande. Ne pas merger cette PR sans demande.
+- Sujet : PR #13 remise à jour avec `origin/main` (`8836411`, PR #16). Le lien recopiable et la barre d'aperçu / période / dates de graphiques sont dans ce code. `E2E_RELAX_LOGIN_LIMIT` n'existe qu'une fois : hors production, plafond 200 ; en production, 8 / e-mail et 20 / IP sur 15 minutes.
+- Ne pas merger les PR #14 et #15 sans demande. Ne pas merger cette PR sans demande.
 
 ## Décisions qui contraignent la suite
 
@@ -61,15 +62,15 @@ npm run build
 npm run test:e2e    # playwright, DEMO_MODE sur le port 3100
 ```
 
-Exécution du 31 octobre 2026 sur cette branche, après la fusion de `main` : 100 cas Vitest, 13 cas Playwright. Le décompte « 63 / 9 » du 20 octobre est périmé. `npm run typecheck` a besoin de `next typegen` sur un arbre sans `.next` (`next-env.d.ts` est ignoré par Git).
+Exécution du 31 octobre 2026 sur cette branche, après la fusion de `main` à `8836411` : 108 cas Vitest, 13 cas Playwright. Le décompte « 63 / 9 » du 20 octobre est périmé. `npm run typecheck` a besoin de `next typegen` sur un arbre sans `.next` (`next-env.d.ts` est ignoré par Git).
 
 ## Prochaine action
 
-1. Laisser les PR #14 à #16 suivre leur revue. Ne pas les merger pour « nettoyer ».
+1. Laisser les PR #14 et #15 suivre leur revue. Ne pas les merger pour « nettoyer ».
 2. Ne pas implémenter Google Ads tant que ce n'est pas demandé. Le prompt autonome est `docs/PROMPT_GOOGLE_ADS.md`. La prochaine migration après celle-ci est le numéro suivant `0004_share_token`.
 3. Ne pas déclarer les KPI conformes à Ads Manager tant qu'un relevé n'est pas écrit dans `docs/ACCEPTANCE.md`.
 
 ## Dernière mise à jour
 
 - Date : 2026-10-31
-- Sujet : fusion de `origin/main` dans la branche des liens privés persistants. Conflit limité à ce fichier. `share-links.ts` garde la copie chiffrée et le refus d'accès quand `syntheticClientHidden` est vrai.
+- Sujet : fusion de `origin/main` (`8836411`) dans la branche des liens privés persistants. `playwright.config.ts` et `src/server/auth/admin.ts` étaient déjà identiques : une seule copie de l'assouplissement e2e. Le lien chiffré et la barre d'aperçu restent tous les deux.

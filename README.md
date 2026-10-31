@@ -4,7 +4,7 @@ Alternative ciblée à Supermetrics pour **Meta Ads uniquement** : l'agence conn
 
 > Statut au 30 octobre 2026 (`main`, `e41bb84`) : l'outil a été utilisé avec les données Meta réelles d'un client, qui est satisfait de cette version. Le dépôt ne contient pas le relevé chiffré de la comparaison avec Ads Manager (`docs/METRICS.md`) : cette égalité n'est donc pas affirmée ici. Les tests automatisés restent sur des réponses simulées ou des données synthétiques.
 
-Les PR [#14](https://github.com/leobrowncode/openmetrics/pull/14), [#15](https://github.com/leobrowncode/openmetrics/pull/15) et [#16](https://github.com/leobrowncode/openmetrics/pull/16) sont ouvertes et **ne font pas partie de cette description**. La copie chiffrée du lien privé (PR #13) et le masquage / la purge du synthétique en font partie.
+Les PR [#14](https://github.com/leobrowncode/openmetrics/pull/14) et [#15](https://github.com/leobrowncode/openmetrics/pull/15) sont ouvertes et **ne font pas partie de cette description**. La copie chiffrée du lien privé (PR #13), la barre d'aperçu avec « Depuis le début » et les dates de graphiques (PR #16), ainsi que le masquage / la purge du synthétique, en font partie.
 
 ## Démarrage rapide (démo locale)
 
@@ -61,7 +61,7 @@ Espace agence (`/admin`, session sur chaque page et chaque action) :
 - **Clients** : création avec le sélecteur des comptes déjà visibles via Meta. Un compte Meta ne peut appartenir qu'à un seul client. La fiche ne propose d'en ajouter un que tant que le client n'en a aucun.
 - **Conversions** : choix des `action_type` après l'import. Les alias d'un même événement sont refusés. Le nom affiché (Achats, Prospects, etc.) remplace le libellé générique. Le recalcul se fait depuis les actions brutes stockées, sans re-télécharger.
 - **Synchronisation** : manuelle ou cron quotidien `0 4 * * *` (04:00 UTC, à l'heure près sur Vercel Hobby). Import initial de 760 jours, du plus récent au plus ancien, par tranches de 31 jours, reprenable. Budget 200 s par exécution (la fonction cron est plafonnée à 300 s). Verrou par compte, exécutions tracées dans *Synchronisations*.
-- **Modèles et dashboards** : modèle intégré « Référence agence - 4 sections », modèles éditables, widgets (cartes KPI, graphique, tableau par campagne), duplication, enregistrement comme modèle. Renommage au clic sur le titre. Deux couleurs de courbes par dashboard.
+- **Modèles et dashboards** : modèle intégré « Référence agence - 4 sections », modèles éditables, widgets (cartes KPI, graphique, tableau par campagne), duplication, enregistrement comme modèle. Renommage au clic sur le titre. Deux couleurs de courbes par dashboard. Barre d'aperçu compacte. Période « Depuis le début » (premier jour stocké jusqu'à hier). Graphiques automatiques au jour calendaire, puis au mois au-delà d'un an.
 - **Bilans** : depuis l'aperçu, une sélection de campagnes et la période affichée sont figées sous un nom. Un lien privé peut ouvrir ce bilan sans laisser changer la période ni les campagnes.
 - **Partage** : création, expiration, révocation, renouvellement. L'accès se vérifie par l'empreinte HMAC. Une copie AES-256-GCM permet de réafficher et recopier l'URL après rechargement. Un lien créé avant cette copie reste valide mais ne se reconstruit pas.
 - **Équipe** : ajout et retrait d'administrateurs, changement de mot de passe.
@@ -76,7 +76,6 @@ Espace client (`/share`) : lecture seule, jeton dans le fragment d'URL, cookie H
 | --- | --- |
 | [#14](https://github.com/leobrowncode/openmetrics/pull/14) | Retirer le texte sous les couleurs et aligner « Générer un bilan » |
 | [#15](https://github.com/leobrowncode/openmetrics/pull/15) | Trier la liste des dashboards en cliquant sur les titres de colonnes |
-| [#16](https://github.com/leobrowncode/openmetrics/pull/16) | Barre d'aperçu plus compacte et dates des graphiques |
 
 ## Architecture
 
