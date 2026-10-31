@@ -66,13 +66,33 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
     await expect(page.getByRole("heading", { name: title, exact: true })).toBeVisible();
   }
   await expect(page.getByText("Dernière actualisation")).toBeVisible();
+  const apercu = page.getByRole("navigation", { name: "Sections du dashboard" }).getByRole("link", { name: "Aperçu", exact: true });
+  const hint = page.getByRole("tooltip");
+  await expect(hint).toBeHidden();
+  await apercu.hover();
+  await expect(hint).toBeVisible();
+  await expect(hint).toHaveText(
+    "Aperçu administrateur. Le client voit la même page via son lien privé, sans accès à l'administration.",
+  );
+  await expect(page.getByRole("option", { name: "Depuis le début" })).toHaveCount(1);
+  await expect(page.getByRole("button", { name: /Depuis le début/ })).toHaveCount(0);
+
   const periodBox = await page.getByLabel("Période").boundingBox();
   const campaignBox = await page.getByRole("button", { name: "Toutes les campagnes" }).boundingBox();
-  expect(periodBox && campaignBox).toBeTruthy();
+  const bilanBox = await page.getByText("Générer un bilan", { exact: true }).boundingBox();
+  expect(periodBox && campaignBox && bilanBox).toBeTruthy();
   const center = (box: { y: number; height: number }) => box.y + box.height / 2;
   expect(Math.abs(center(periodBox!) - center(campaignBox!))).toBeLessThan(3);
   expect(Math.abs(periodBox!.height - campaignBox!.height)).toBeLessThan(2);
+  expect(Math.abs(bilanBox!.height - campaignBox!.height)).toBeLessThan(2);
+  expect(Math.abs(center(bilanBox!) - center(campaignBox!))).toBeLessThan(3);
   expect(campaignBox!.x).toBeGreaterThan(periodBox!.x + periodBox!.width);
+  const selectedBox = await page.locator("span.text-slate-700").filter({ hasText: "Période sélectionnée" }).boundingBox();
+  const comparedBox = await page.locator("span.text-slate-500").filter({ hasText: "Comparé à" }).boundingBox();
+  expect(selectedBox && comparedBox).toBeTruthy();
+  expect(comparedBox!.x).toBeGreaterThan(selectedBox!.x + selectedBox!.width - 2);
+  expect(Math.abs(center(selectedBox!) - center(comparedBox!))).toBeLessThan(8);
+
   const spend = await page.getByTestId("kpi-spend").first().innerText();
   expect(spend).toMatch(/€/);
   const tableTotal = page.locator("tfoot td").nth(1);
@@ -100,6 +120,23 @@ test("admin sees reference dashboard with consistent KPIs", async ({ page }) => 
   expect(chartLines).toHaveLength(31);
   expect(chartLines[1]).toMatch(/^\d{2}\/\d{2}\t/);
   expect(chartLines.at(-1)).toMatch(/€/);
+
+  await page.getByLabel("Période").selectOption("since_start");
+  await expect(page).toHaveURL(/[?&]period=since_start(?:&|$)/);
+  await expect(page).not.toHaveURL(/[?&]from=/);
+  await expect(page.getByLabel("Période")).toHaveValue("since_start");
+  await expect(page.getByTestId("kpi-spend").first()).not.toHaveText(spend);
+  await expect(chartCard.getByText("Granularité : jour")).toBeVisible();
+  await expect(chartCard.locator(".recharts-xAxis-tick-labels .recharts-cartesian-axis-tick-value").first()).toHaveText(/^\d{2}\/\d{2}$/);
+  await expect(chartCard.getByText(/^sem\./)).toHaveCount(0);
+  await expect(chartCard.getByRole("button", { name: "Copier le tableau" })).toBeVisible();
+  await chartCard.getByRole("button", { name: "Copier le tableau" }).click();
+  await expect(chartCard.getByRole("button", { name: "Tableau copié" })).toBeVisible();
+  const sinceLines = (await page.evaluate(() => navigator.clipboard.readText())).trim().split("\n");
+  expect(sinceLines[0]).toBe("Date\tDépenses");
+  expect(sinceLines.length).toBeGreaterThan(31);
+  expect(sinceLines[1]).toMatch(/^\d{2}\/\d{2}\t/);
+  expect(sinceLines.some((line) => line.startsWith("sem."))).toBe(false);
   if (SHOTS) await page.screenshot({ path: `${SHOTS}/02-admin-dashboard.png`, fullPage: true });
 });
 

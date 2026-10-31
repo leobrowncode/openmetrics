@@ -69,6 +69,9 @@ export const inputClass =
 export const toolbarControlClass =
   "h-10 shrink-0 rounded-lg border border-slate-300 bg-white px-3 text-sm text-slate-900 shadow-sm focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-100 disabled:cursor-not-allowed disabled:opacity-50";
 
+/** Toolbar button. Same height as `toolbarControlClass`. */
+export const toolbarButtonClass = cx(buttonClass("secondary"), "h-10 shrink-0 py-0");
+
 export function Field({ label, hint, children }: { label: string; hint?: ReactNode; children: ReactNode }) {
   return (
     <label className="block space-y-1.5">

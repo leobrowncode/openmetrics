@@ -9,14 +9,16 @@ export function NavLink({
   active,
   className,
   children,
+  describedBy,
 }: {
   href: string;
   active: boolean;
   className: string;
   children: ReactNode;
+  describedBy?: string;
 }) {
   return (
-    <Link href={href} className={className} aria-current={active ? "page" : undefined}>
+    <Link href={href} className={className} aria-current={active ? "page" : undefined} aria-describedby={describedBy}>
       {children}
       <LinkPending />
     </Link>

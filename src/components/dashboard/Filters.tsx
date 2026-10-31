@@ -4,37 +4,65 @@ import { useEffect, useRef, useState } from "react";
 import { compareLabels } from "@/lib/account-search";
 import { PERIOD_LABELS, PERIOD_PRESETS, formatDateFr, type DateRange, type PeriodPreset } from "@/lib/periods";
 import { plainDashes } from "@/lib/text";
-import { buttonClass, cx, inputClass, toolbarControlClass } from "../ui";
+import { buttonClass, cx, inputClass, toolbarButtonClass, toolbarControlClass } from "../ui";
+
+export function PeriodReadout({ range, compare }: { range: DateRange; compare?: DateRange | null }) {
+  return (
+    <span className="inline-flex h-10 items-center gap-2 whitespace-nowrap text-sm tabular">
+      <span className="text-slate-700">
+        <span className="sr-only">Période sélectionnée : </span>
+        {formatDateFr(range.from)} - {formatDateFr(range.to)}
+      </span>
+      {compare && <CompareReadout compare={compare} />}
+    </span>
+  );
+}
+
+function CompareReadout({ compare }: { compare: DateRange }) {
+  return (
+    <span className="text-slate-500">
+      <span className="sr-only">Comparé à </span>
+      <span aria-hidden>vs </span>
+      {formatDateFr(compare.from)} - {formatDateFr(compare.to)}
+    </span>
+  );
+}
 
 export function PeriodPicker({
   period,
   range,
+  compare,
   disabled,
   onChange,
 }: {
-  period: PeriodPreset | "custom";
+  period: PeriodPreset | "custom" | "since_start";
   range: DateRange;
+  compare?: DateRange | null;
   disabled?: boolean;
-  onChange: (next: { period: PeriodPreset } | { period: "custom"; from: string; to: string }) => void;
+  onChange: (
+    next: { period: PeriodPreset } | { period: "since_start" } | { period: "custom"; from: string; to: string },
+  ) => void;
 }) {
   const [custom, setCustom] = useState(period === "custom");
   const [from, setFrom] = useState(range.from);
   const [to, setTo] = useState(range.to);
 
   return (
-    <div className={cx("flex items-center gap-2", custom && "flex-wrap")}>
+    <div className="flex flex-wrap items-center gap-2">
       <select
         aria-label="Période"
         className={toolbarControlClass}
         value={custom ? "custom" : period}
         disabled={disabled}
         onChange={(e) => {
-          if (e.target.value === "custom") {
+          const value = e.target.value;
+          if (value === "custom") {
             setCustom(true);
             return;
           }
           setCustom(false);
-          onChange({ period: e.target.value as PeriodPreset });
+          if (value === "since_start") onChange({ period: "since_start" });
+          else onChange({ period: value as PeriodPreset });
         }}
       >
         {PERIOD_PRESETS.map((p) => (
@@ -42,27 +70,33 @@ export function PeriodPicker({
             {PERIOD_LABELS[p]}
           </option>
         ))}
+        <option value="since_start">Depuis le début</option>
         <option value="custom">Personnalisée…</option>
       </select>
       {custom ? (
-        <form
-          className="flex flex-wrap items-center gap-2"
-          onSubmit={(e) => {
-            e.preventDefault();
-            onChange({ period: "custom", from, to });
-          }}
-        >
-          <input type="date" aria-label="Du" className={toolbarControlClass} value={from} max={to} onChange={(e) => setFrom(e.target.value)} required />
-          <span className="text-sm text-slate-500">au</span>
-          <input type="date" aria-label="Au" className={toolbarControlClass} value={to} min={from} onChange={(e) => setTo(e.target.value)} required />
-          <button type="submit" className={cx(buttonClass("secondary"), "h-10 py-0")}>
-            Appliquer
-          </button>
-        </form>
+        <>
+          <form
+            className="flex flex-wrap items-center gap-2"
+            onSubmit={(e) => {
+              e.preventDefault();
+              onChange({ period: "custom", from, to });
+            }}
+          >
+            <input type="date" aria-label="Du" className={toolbarControlClass} value={from} max={to} onChange={(e) => setFrom(e.target.value)} required />
+            <span className="text-sm text-slate-500">au</span>
+            <input type="date" aria-label="Au" className={toolbarControlClass} value={to} min={from} onChange={(e) => setTo(e.target.value)} required />
+            <button type="submit" className={toolbarButtonClass}>
+              Appliquer
+            </button>
+          </form>
+          {compare && (
+            <span className="inline-flex h-10 items-center whitespace-nowrap text-sm tabular">
+              <CompareReadout compare={compare} />
+            </span>
+          )}
+        </>
       ) : (
-        <span className="inline-flex h-10 items-center whitespace-nowrap text-sm text-slate-500 tabular">
-          {formatDateFr(range.from)} - {formatDateFr(range.to)}
-        </span>
+        <PeriodReadout range={range} compare={compare} />
       )}
     </div>
   );
@@ -105,7 +139,7 @@ export function CampaignFilter({
     <div className="relative" ref={ref}>
       <button
         type="button"
-        className={cx(buttonClass("secondary"), "h-10 max-w-72 shrink-0 py-0")}
+        className={cx(toolbarButtonClass, "max-w-72")}
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => setOpen(!open)}

@@ -1,6 +1,7 @@
 import "server-only";
 import { parseDashboardConfig, type DashboardConfig } from "@/lib/dashboard-config";
 import {
+  addDays,
   isPeriodPreset,
   resolvePreset,
   todayInTimezone,
@@ -15,7 +16,7 @@ import { dashboardAccountScope, getDashboardData, type DashboardData } from "./d
 type Dashboard = typeof dashboards.$inferSelect;
 
 export interface DashboardQuery {
-  period: PeriodPreset | "custom";
+  period: PeriodPreset | "custom" | "since_start";
   range: DateRange;
   campaignIds: string[];
 }
@@ -51,6 +52,10 @@ export function parseDashboardQuery(
       if (error) return { error };
       period = "custom";
       range = custom;
+    } else if (requested === "since_start") {
+      period = "since_start";
+      const yesterday = addDays(today, -1);
+      range = { from: yesterday, to: yesterday };
     } else if (isPeriodPreset(requested)) {
       period = requested;
       range = resolvePreset(requested, today);
@@ -98,6 +103,8 @@ export async function loadDashboardPayload(
     range: query.range,
     campaignIds: query.campaignIds,
     compare: config.compareToPreviousPeriod,
+    sinceStart: query.period === "since_start",
   });
+  if (query.period === "since_start") query.range = data.range;
   return { query, data };
 }

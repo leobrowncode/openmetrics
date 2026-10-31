@@ -22,7 +22,7 @@ export default async function DashboardLayout(props: LayoutProps<"/admin/dashboa
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3">
+      <div className="relative z-30 flex flex-wrap items-end justify-between gap-3 border-b border-slate-200 pb-3">
         <div className="min-w-0">
           <Link href={`/admin/clients/${row.clientId}`} className="text-sm font-medium text-brand-600 hover:underline">
             {plainDashes(row.clientName)}

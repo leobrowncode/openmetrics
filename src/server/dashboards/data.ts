@@ -3,7 +3,7 @@ import { and, asc, between, eq, inArray, sql } from "drizzle-orm";
 import { describeConversionActions, type ConversionDisplay } from "@/lib/conversion-actions";
 import { includeAccountInDashboard } from "@/lib/synthetic-display";
 import { addSums, emptySums, type Sums } from "@/lib/metrics";
-import { formatDateFr, previousPeriod, type DateRange } from "@/lib/periods";
+import { addDays, formatDateFr, isIsoDate, previousPeriod, rangeFromFirstData, todayInTimezone, type DateRange } from "@/lib/periods";
 import type { Db } from "../db/client";
 import { adAccounts, campaigns, dashboards, insightsDaily, metaConnections } from "../db/schema";
 import { getSyntheticDisplay, hasRealMetaAccount } from "../settings/synthetic";
@@ -17,6 +17,8 @@ export interface CampaignOption {
 export interface DashboardData {
   range: DateRange;
   previousRange: DateRange | null;
+  /** Earliest insight day for the current campaign scope, including days outside `range`. */
+  dataFrom: string | null;
   currency: string;
   timezoneName: string;
   /** Oldest successful sync among the dashboard's accounts (conservative freshness). */
@@ -78,6 +80,12 @@ const sums = {
   conversionValue: sql<number>`coalesce(sum(${insightsDaily.conversionValue}), 0)::float8`,
 };
 
+function toIsoDay(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const day = value.slice(0, 10);
+  return isIsoDate(day) ? day : null;
+}
+
 function toSums(row: Record<keyof Sums, unknown>): Sums {
   return {
     spend: Number(row.spend),
@@ -92,7 +100,7 @@ function toSums(row: Record<keyof Sums, unknown>): Sums {
 export async function getDashboardData(
   db: Db,
   dashboard: Dashboard,
-  query: { range: DateRange; campaignIds?: string[]; compare: boolean },
+  query: { range: DateRange; campaignIds?: string[]; compare: boolean; sinceStart?: boolean },
 ): Promise<DashboardData> {
   const { accounts, syntheticOmitted } = await loadDashboardAccounts(db, dashboard);
   const accountIds = accounts.map((a) => a.id);
@@ -121,21 +129,24 @@ export async function getDashboardData(
   }
   if (conversion.warning) warnings.push(conversion.warning);
 
-  const previousRange = query.compare ? previousPeriod(query.range) : null;
-  const earliestNeeded = previousRange?.from ?? query.range.from;
-  const incomplete = accounts.filter((a) => !a.historyFrom || a.historyFrom > earliestNeeded);
-  if (incomplete.length > 0) {
+  const historyGapWarning = (from: string, compared: boolean) => {
+    const incomplete = accounts.filter((a) => !a.historyFrom || a.historyFrom > from);
+    if (incomplete.length === 0) return null;
     const available = incomplete.map((a) => a.historyFrom);
-    warnings.push(
-      available.some((d) => d === null)
-        ? "Import de l'historique en cours : les chiffres sont encore incomplets."
-        : `Données disponibles à partir du ${formatDateFr(available.sort().at(-1)!)} seulement : les jours antérieurs ne sont pas comptés${previousRange ? " (période de comparaison incluse)" : ""}.`,
-    );
-  }
+    return available.some((d) => d === null)
+      ? "Import de l'historique en cours : les chiffres sont encore incomplets."
+      : `Données disponibles à partir du ${formatDateFr(available.sort().at(-1)!)} seulement : les jours antérieurs ne sont pas comptés${compared ? " (période de comparaison incluse)" : ""}.`;
+  };
+
+  const range = query.range;
+  const previousRange = query.compare ? previousPeriod(range) : null;
+  let historyWarning = historyGapWarning(previousRange?.from ?? range.from, previousRange !== null);
+  if (historyWarning) warnings.push(historyWarning);
 
   const base = {
-    range: query.range,
+    range,
     previousRange,
+    dataFrom: null as string | null,
     currency: currencies[0] ?? "EUR",
     timezoneName: timezones[0] ?? "Europe/Paris",
     lastSyncedAt: null as string | null,
@@ -182,13 +193,45 @@ export async function getDashboardData(
       requested.length ? inArray(insightsDaily.metaCampaignId, requested) : undefined,
     );
 
-  const seriesRows = await db
+  // First stored day for this scope, even when the selected range starts later.
+  // The toolbar uses it to begin the period where the charts actually have data.
+  const earliestQuery = db
+    .select({ date: sql<string | null>`min(${insightsDaily.date})::text` })
+    .from(insightsDaily)
+    .where(
+      and(
+        inArray(insightsDaily.adAccountId, accountIds),
+        requested.length ? inArray(insightsDaily.metaCampaignId, requested) : undefined,
+      ),
+    );
+
+  if (query.sinceStart) {
+    const [earliest] = await earliestQuery;
+    base.dataFrom = toIsoDay(earliest?.date);
+    const end = addDays(todayInTimezone(base.timezoneName), -1);
+    base.range = base.dataFrom ? rangeFromFirstData(base.dataFrom, end) : { from: end, to: end };
+    base.previousRange = query.compare ? previousPeriod(base.range) : null;
+    if (historyWarning) {
+      const index = warnings.indexOf(historyWarning);
+      if (index >= 0) warnings.splice(index, 1);
+    }
+    historyWarning = historyGapWarning(base.previousRange?.from ?? base.range.from, base.previousRange !== null);
+    if (historyWarning) warnings.push(historyWarning);
+  }
+
+  const seriesQuery = db
     .select({ date: insightsDaily.date, ...sums })
     .from(insightsDaily)
-    .where(where(query.range))
+    .where(where(base.range))
     .groupBy(insightsDaily.date)
     .orderBy(asc(insightsDaily.date));
-  base.series = seriesRows.map((r) => ({ date: r.date, ...toSums(r) }));
+  if (query.sinceStart) {
+    base.series = (await seriesQuery).map((r) => ({ date: r.date, ...toSums(r) }));
+  } else {
+    const [[earliest], seriesRows] = await Promise.all([earliestQuery, seriesQuery]);
+    base.dataFrom = toIsoDay(earliest?.date);
+    base.series = seriesRows.map((r) => ({ date: r.date, ...toSums(r) }));
+  }
   base.totals = base.series.reduce((acc, row) => addSums(acc, row), emptySums());
 
   if (base.previousRange) {
@@ -200,7 +243,7 @@ export async function getDashboardData(
   const byCampaignRows = await db
     .select({ campaignId: insightsDaily.metaCampaignId, ...sums })
     .from(insightsDaily)
-    .where(where(query.range))
+    .where(where(base.range))
     .groupBy(insightsDaily.metaCampaignId)
     .orderBy(sql`2 desc`);
   base.byCampaign = byCampaignRows.map((r) => ({

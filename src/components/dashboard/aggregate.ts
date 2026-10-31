@@ -3,10 +3,13 @@ import { daysBetweenInclusive, eachDay, type DateRange } from "@/lib/periods";
 
 export type Granularity = "day" | "week" | "month";
 
+/**
+ * Automatic charts use calendar days (`05/01`), then months past a year.
+ * Week buckets (`sem. 05/01`) stay available when a caller asks for them.
+ */
 export function pickGranularity(range: DateRange): Granularity {
   const days = daysBetweenInclusive(range);
-  if (days > 400) return "month";
-  if (days > 92) return "week";
+  if (days > 366) return "month";
   return "day";
 }
 
